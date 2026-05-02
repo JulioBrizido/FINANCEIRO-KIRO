@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Financeiro 2026 — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --surface2: #22263a;
+      --accent:   #6c63ff;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --yellow:   #f59e0b;
+      --text:     #e2e8f0;
+      --muted:    #94a3b8;
+      --border:   #2d3148;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── NAV ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+    nav .brand { font-size: 1.2rem; font-weight: 700; padding: 1rem 1.5rem 1rem 0; color: var(--text); }
+    nav .brand span { color: var(--accent); }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 1rem 1.25rem;
+      font-size: .9rem;
+      border-bottom: 2px solid transparent;
+      transition: color .2s, border-color .2s;
+    }
+    nav a:hover { color: var(--text); }
+    nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+      padding: .75rem 2rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .filter-bar label { color: var(--muted); font-size: .85rem; }
+    select {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .4rem .8rem;
+      font-size: .9rem;
+      cursor: pointer;
+      outline: none;
+    }
+    select:focus { border-color: var(--accent); }
+
+    .main { padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+
+    /* ── EMPTY ── */
+    #emptyState {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+      gap: 1rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    #emptyState .icon { font-size: 3rem; }
+    #emptyState a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--accent);
+      padding: .5rem 1.25rem;
+      border-radius: 8px;
+      margin-top: .5rem;
+      transition: background .2s;
+    }
+    #emptyState a:hover { background: var(--accent); color: #fff; }
+
+    #dashboard { display: none; }
+
+    /* ── CARDS ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex; flex-direction: column; gap: .4rem;
+    }
+    .card .label { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .card .value { font-size: 1.6rem; font-weight: 700; }
+    .card .value.positive { color: var(--green); }
+    .card .value.negative { color: var(--red); }
+    .card .value.neutral  { color: var(--text); }
+    .card .value.accent   { color: var(--accent); }
+    .card .sub { font-size: .78rem; color: var(--muted); }
+
+    /* ── CHARTS ── */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .charts-grid.full { grid-template-columns: 1fr; }
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+    .chart-card h3 { font-size: .9rem; color: var(--muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap.tall { height: 320px; }
+
+    /* ── TABLE ── */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+    }
+    .table-card h3 { font-size: .9rem; color: var(--muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    th { color: var(--muted); font-weight: 600; text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+    td { padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    .badge {
+      display: inline-block; padding: .15rem .5rem;
+      border-radius: 999px; font-size: .75rem; font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">💰 Financeiro <span>2026</span></div>
+  <a href="index.html">Lançamentos</a>
+  <a href="dashboard.html" class="active">Dashboard</a>
+</nav>
+
+<div class="filter-bar">
+  <label for="mesSelect">Mês:</label>
+  <select id="mesSelect">
+    <option value="-1">Todos os meses</option>
+  </select>
+  <label for="cartaoSelect">Cartão:</label>
+  <select id="cartaoSelect">
+    <option value="todos">Todos</option>
+    <option value="Bradesco">Bradesco</option>
+    <option value="Nubank">Nubank</option>
+    <option value="Itaú">Itaú</option>
+    <option value="Fixo">Fixo</option>
+  </select>
+</div>
+
+<div class="main">
+
+  <!-- Estado vazio -->
+  <div id="emptyState">
+    <div class="icon">📊</div>
+    <p>Nenhum lançamento encontrado.<br>Cadastre transações para ver o dashboard.</p>
+    <a href="index.html">➕ Ir para Lançamentos</a>
+  </div>
+
+  <div id="dashboard">
+    <!-- Cards -->
+    <div class="cards">
+      <div class="card">
+        <span class="label">📥 Entradas</span>
+        <span class="value positive" id="cardEntradas">R$ 0,00</span>
+        <span class="sub" id="cardEntradasSub">todos os meses</span>
+      </div>
+      <div class="card">
+        <span class="label">📤 Saídas</span>
+        <span class="value negative" id="cardSaidas">R$ 0,00</span>
+        <span class="sub" id="cardSaidasSub">todos os cartões</span>
+      </div>
+      <div class="card">
+        <span class="label">⚖️ Saldo</span>
+        <span class="value" id="cardSaldo">R$ 0,00</span>
+        <span class="sub">entradas − saídas</span>
+      </div>
+      <div class="card">
+        <span class="label">Bradesco</span>
+        <span class="value accent" id="cardBradesco">R$ 0,00</span>
+        <span class="sub">fatura do mês</span>
+      </div>
+      <div class="card">
+        <span class="label">Nubank</span>
+        <span class="value accent" id="cardNubank">R$ 0,00</span>
+        <span class="sub">fatura do mês</span>
+      </div>
+      <div class="card">
+        <span class="label">Itaú</span>
+        <span class="value accent" id="cardItau">R$ 0,00</span>
+        <span class="sub">fatura do mês</span>
+      </div>
+      <div class="card">
+        <span class="label">Maior Categoria</span>
+        <span class="value neutral" id="cardMaiorCat">—</span>
+        <span class="sub" id="cardMaiorCatVal"></span>
+      </div>
+    </div>
+
+    <!-- Charts row 1 -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Gastos por Categoria</h3>
+        <div class="chart-wrap"><canvas id="chartDonut"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Total por Cartão — Mês Selecionado</h3>
+        <div class="chart-wrap"><canvas id="chartCartoes"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Chart row 2 — full width -->
+    <div class="charts-grid full">
+      <div class="chart-card">
+        <h3>Evolução Mensal por Cartão (Saídas)</h3>
+        <div class="chart-wrap tall"><canvas id="chartLinhas"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Chart row 3 — entradas vs saídas -->
+    <div class="charts-grid full">
+      <div class="chart-card">
+        <h3>Entradas vs Saídas por Mês</h3>
+        <div class="chart-wrap tall"><canvas id="chartSaldo"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="table-card">
+      <h3>Transações do Período</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Mov.</th>
+            <th>Cartão</th>
+            <th>Mês</th>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Venc</th>
+            <th style="text-align:right">Valor</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="db.js"></script>
+<script>
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+const CARTOES = ['Bradesco','Nubank','Itaú'];
+
+const TIPO_CORES = {
+  'Casa':'#6c63ff','Silvia':'#f472b6','Lazer':'#f59e0b','Roupa':'#06b6d4',
+  'Letícia':'#a78bfa','Silvana':'#fb923c','Mercado':'#22c55e',
+  'Restaurante':'#ef4444','Saúde':'#38bdf8','Padaria':'#84cc16',
+  'Carro':'#64748b','Outros':'#94a3b8',
+};
+
+let allTransacoes = [];
+let charts = {};
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+
+async function init() {
+  allTransacoes = await dbGetAll();
+
+  if (allTransacoes.length === 0) {
+    document.getElementById('emptyState').style.display = 'flex';
+    return;
+  }
+
+  // Popula filtro de meses com os que existem nos dados
+  const mesesPresentes = [...new Set(allTransacoes.map(t => t.mesIdx))].sort((a,b) => a - b);
+  const sel = document.getElementById('mesSelect');
+  mesesPresentes.forEach(idx => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = MESES[idx];
+    sel.appendChild(opt);
+  });
+
+  // Seleciona mês atual (ou o último disponível)
+  const mesAtual = new Date().getMonth();
+  sel.value = mesesPresentes.includes(mesAtual) ? mesAtual : mesesPresentes[mesesPresentes.length - 1];
+
+  document.getElementById('dashboard').style.display = 'block';
+  renderDashboard();
+
+  sel.addEventListener('change', renderDashboard);
+  document.getElementById('cartaoSelect').addEventListener('change', renderDashboard);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+
+function renderDashboard() {
+  const mesIdx      = parseInt(document.getElementById('mesSelect').value);
+  const cartaoFiltro = document.getElementById('cartaoSelect').value;
+
+  let filtrado = allTransacoes;
+  if (mesIdx !== -1)         filtrado = filtrado.filter(t => t.mesIdx === mesIdx);
+  if (cartaoFiltro !== 'todos') filtrado = filtrado.filter(t => t.cartao === cartaoFiltro);
+
+  renderCards(filtrado, mesIdx);
+  renderDonut(filtrado);
+  renderBarCartoes(mesIdx);
+  renderLinhas();
+  renderSaldo();
+  renderTabela(filtrado);
+}
+
+function fmt(v) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function renderCards(filtrado, mesIdx) {
+  const entradas = filtrado.filter(t => t.mov === 'entrada').reduce((s,t) => s + t.valor, 0);
+  const saidas   = filtrado.filter(t => (t.mov||'saida') === 'saida').reduce((s,t) => s + t.valor, 0);
+  const saldo    = entradas - saidas;
+  const label    = mesIdx === -1 ? 'todos os meses' : MESES[mesIdx];
+
+  document.getElementById('cardEntradas').textContent  = fmt(entradas);
+  document.getElementById('cardEntradasSub').textContent = label;
+  document.getElementById('cardSaidas').textContent    = fmt(saidas);
+  document.getElementById('cardSaidasSub').textContent = label;
+  const saldoEl = document.getElementById('cardSaldo');
+  saldoEl.textContent = fmt(saldo);
+  saldoEl.className   = 'value ' + (saldo >= 0 ? 'positive' : 'negative');
+
+  // Por cartão (sem filtro de cartão, só mês)
+  let base = allTransacoes.filter(t => (t.mov||'saida') === 'saida');
+  if (mesIdx !== -1) base = base.filter(t => t.mesIdx === mesIdx);
+
+  const idMap = { 'Bradesco':'cardBradesco', 'Nubank':'cardNubank', 'Itaú':'cardItau' };
+  CARTOES.forEach(nome => {
+    const v = base.filter(t => t.cartao === nome).reduce((s,t) => s + t.valor, 0);
+    document.getElementById(idMap[nome]).textContent = fmt(v);
+  });
+
+  // Maior categoria (saídas)
+  const porTipo = {};
+  filtrado.filter(t => (t.mov||'saida') === 'saida')
+          .forEach(t => { porTipo[t.tipo] = (porTipo[t.tipo] || 0) + t.valor; });
+  const sorted = Object.entries(porTipo).sort((a,b) => b[1] - a[1]);
+  if (sorted.length) {
+    document.getElementById('cardMaiorCat').textContent    = sorted[0][0];
+    document.getElementById('cardMaiorCatVal').textContent = fmt(sorted[0][1]);
+  }
+}
+
+function renderDonut(filtrado) {
+  // Donut mostra só saídas por categoria
+  const saidas = filtrado.filter(t => (t.mov||'saida') === 'saida');
+  const porTipo = {};
+  saidas.forEach(t => { porTipo[t.tipo] = (porTipo[t.tipo] || 0) + t.valor; });
+  const sorted = Object.entries(porTipo).sort((a,b) => b[1] - a[1]);
+  const labels = sorted.map(e => e[0]);
+  const data   = sorted.map(e => e[1]);
+  const colors = labels.map(l => TIPO_CORES[l] || TIPO_CORES['Outros']);
+
+  if (charts.donut) charts.donut.destroy();
+  charts.donut = new Chart(document.getElementById('chartDonut'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#1a1d27' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 12 }, padding: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } },
+      },
+    },
+  });
+}
+
+function renderBarCartoes(mesIdx) {
+  let base = allTransacoes.filter(t => (t.mov||'saida') === 'saida');
+  if (mesIdx !== -1) base = base.filter(t => t.mesIdx === mesIdx);
+
+  const labels = CARTOES;
+  const data   = CARTOES.map(c => base.filter(t => t.cartao === c).reduce((s,t) => s + t.valor, 0));
+  const colors = ['#6c63ff','#f472b6','#f59e0b'];
+
+  if (charts.bar) charts.bar.destroy();
+  charts.bar = new Chart(document.getElementById('chartCartoes'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Total (R$)', data, backgroundColor: colors, borderRadius: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d3148' } },
+        y: { ticks: { color: '#94a3b8', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: '#2d3148' } },
+      },
+    },
+  });
+}
+
+function renderLinhas() {
+  const mesesPresentes = [...new Set(allTransacoes.map(t => t.mesIdx))].sort((a,b) => a - b);
+  const labels = mesesPresentes.map(i => MESES[i].substring(0, 3));
+
+  const datasets = CARTOES.map((c, i) => ({
+    label: c,
+    data: mesesPresentes.map(m =>
+      allTransacoes.filter(t => t.cartao === c && t.mesIdx === m && (t.mov||'saida') === 'saida')
+                   .reduce((s,t) => s + t.valor, 0)
+    ),
+    borderColor:     ['#6c63ff','#f472b6','#f59e0b'][i],
+    backgroundColor: ['#6c63ff33','#f472b633','#f59e0b33'][i],
+    tension: 0.4, fill: true, pointRadius: 4,
+  }));
+
+  if (charts.linhas) charts.linhas.destroy();
+  charts.linhas = new Chart(document.getElementById('chartLinhas'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#e2e8f0' } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } },
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d3148' } },
+        y: { ticks: { color: '#94a3b8', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: '#2d3148' } },
+      },
+    },
+  });
+}
+
+function renderSaldo() {
+  const mesesPresentes = [...new Set(allTransacoes.map(t => t.mesIdx))].sort((a,b) => a - b);
+  const labels   = mesesPresentes.map(i => MESES[i].substring(0, 3));
+  const entradas = mesesPresentes.map(m =>
+    allTransacoes.filter(t => t.mov === 'entrada' && t.mesIdx === m).reduce((s,t)=>s+t.valor,0));
+  const saidas   = mesesPresentes.map(m =>
+    allTransacoes.filter(t => (t.mov||'saida') === 'saida' && t.mesIdx === m).reduce((s,t)=>s+t.valor,0));
+  const saldo    = entradas.map((e,i) => e - saidas[i]);
+
+  if (charts.saldo) charts.saldo.destroy();
+  charts.saldo = new Chart(document.getElementById('chartSaldo'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Entradas', data: entradas, backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1, borderRadius: 4 },
+        { label: 'Saídas',   data: saidas,   backgroundColor: '#ef444488', borderColor: '#ef4444', borderWidth: 1, borderRadius: 4 },
+        { label: 'Saldo',    data: saldo,    type: 'line', borderColor: '#6c63ff', backgroundColor: '#6c63ff22',
+          tension: 0.4, fill: true, pointRadius: 4, yAxisID: 'y' },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#e2e8f0' } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } },
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d3148' } },
+        y: { ticks: { color: '#94a3b8', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: '#2d3148' } },
+      },
+    },
+  });
+}
+
+function renderTabela(filtrado) {
+  const tbody  = document.getElementById('tabelaBody');
+  const sorted = [...filtrado].sort((a,b) => b.valor - a.valor).slice(0, 100);
+
+  tbody.innerHTML = sorted.map(t => {
+    const cor  = TIPO_CORES[t.tipo] || TIPO_CORES['Outros'];
+    const mov  = t.mov || 'saida';
+    const icon = mov === 'entrada' ? '📥' : '📤';
+    const vc   = mov === 'entrada' ? '#22c55e' : '#ef4444';
+    return `<tr>
+      <td style="font-size:1rem">${icon}</td>
+      <td>${t.cartao}</td>
+      <td>${t.mes}</td>
+      <td>${t.descricao}</td>
+      <td><span class="badge" style="background:${cor}22;color:${cor}">${t.tipo}</span></td>
+      <td>${t.venc || '—'}</td>
+      <td style="text-align:right;font-weight:600;color:${vc}">${fmt(t.valor)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── START ─────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
