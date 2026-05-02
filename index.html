@@ -85,6 +85,7 @@
   <div class="brand">💰 Financeiro <span>2026</span></div>
   <a href="index.html" class="active">Lançamentos</a>
   <a href="dashboard.html">Dashboard</a>
+  <a href="config.html">Configurações</a>
 </nav>
 <div class="main">
   <div class="form-card">
@@ -100,12 +101,7 @@
       </div>
       <div class="form-group">
         <label for="fCartao">Cartão / Conta</label>
-        <select id="fCartao">
-          <option value="Bradesco">Bradesco</option>
-          <option value="Nubank">Nubank</option>
-          <option value="Itaú">Itaú</option>
-          <option value="Fixo">Fixo</option>
-        </select>
+        <select id="fCartao"></select>
       </div>
       <div class="form-group">
         <label for="fMes">Mês</label>
@@ -173,10 +169,6 @@
     <label>Conta:</label>
     <select id="filtroCartao">
       <option value="todos">Todos</option>
-      <option value="Bradesco">Bradesco</option>
-      <option value="Nubank">Nubank</option>
-      <option value="Itaú">Itaú</option>
-      <option value="Fixo">Fixo</option>
     </select>
     <label>Categoria:</label>
     <select id="filtroTipo"><option value="todos">Todas</option></select>
@@ -263,6 +255,39 @@ function corTipo(tipo, mov) {
 
 let editandoId = null;
 
+// ── CONTAS DINÂMICAS ─────────────────────────────────────────────────────
+
+let _contas = []; // cache
+
+async function carregarContas() {
+  _contas = await contasGetAll();
+
+  // Preenche select do formulário
+  const sel = document.getElementById('fCartao');
+  const valAtual = sel.value;
+  sel.innerHTML = _contas.map(c =>
+    '<option value="' + c.nome + '"' + (c.nome === valAtual ? ' selected' : '') + '>' + c.nome + '</option>'
+  ).join('');
+
+  // Preenche filtro da tabela
+  const filtro = document.getElementById('filtroCartao');
+  const filtroAtual = filtro.value;
+  filtro.innerHTML = '<option value="todos">Todos</option>' +
+    _contas.map(c =>
+      '<option value="' + c.nome + '"' + (c.nome === filtroAtual ? ' selected' : '') + '>' + c.nome + '</option>'
+    ).join('');
+}
+
+function contaNome(mov) {
+  // Padrão ao trocar movimento: primeira carteira para entrada, primeiro cartão para saída
+  if (mov === 'entrada') {
+    const c = _contas.find(c => c.tipo === 'carteira' || c.tipo === 'conta') || _contas[0];
+    return c ? c.nome : '';
+  }
+  const c = _contas.find(c => c.tipo === 'cartao') || _contas[0];
+  return c ? c.nome : '';
+}
+
 // ── TOGGLE MOVIMENTO ─────────────────────────────────────────────────────
 function setMov(mov) {
   document.getElementById('fMov').value = mov;
@@ -271,23 +296,27 @@ function setMov(mov) {
   s.className = 'tog-btn' + (mov === 'saida'   ? ' active-saida'   : '');
   e.className = 'tog-btn' + (mov === 'entrada' ? ' active-entrada' : '');
   preencherCats(mov);
-  document.getElementById('fCartao').value = mov === 'entrada' ? 'Fixo' : 'Bradesco';
+  document.getElementById('fCartao').value = contaNome(mov);
   document.getElementById('grupoParc').style.display = mov === 'saida' ? 'flex' : 'none';
 }
 
 function preencherCats(mov, valorAtual) {
-  const cats = mov === 'entrada' ? CATS_ENTRADA_PT : CATS_SAIDA_PT;
-  const sel  = document.getElementById('fTipo');
-  sel.innerHTML = cats.map(c =>
-    '<option' + (c === valorAtual ? ' selected' : '') + '>' + c + '</option>'
-  ).join('');
+  catsGetAll().then(todas => {
+    const cats = todas.filter(c => c.mov === mov);
+    const sel  = document.getElementById('fTipo');
+    sel.innerHTML = cats.map(c =>
+      '<option' + (c.nome === valorAtual ? ' selected' : '') + '>' + c.nome + '</option>'
+    ).join('');
+  });
 }
 
 function preencherFiltroTipo() {
-  const todas = [...new Set([...CATS_SAIDA_PT, ...CATS_ENTRADA_PT])].sort();
-  const sel   = document.getElementById('filtroTipo');
-  sel.innerHTML = '<option value="todos">Todas</option>' +
-    todas.map(c => '<option>' + c + '</option>').join('');
+  catsGetAll().then(todas => {
+    const sorted = [...todas].sort((a, b) => a.nome.localeCompare(b.nome));
+    const sel = document.getElementById('filtroTipo');
+    sel.innerHTML = '<option value="todos">Todas</option>' +
+      sorted.map(c => '<option>' + c.nome + '</option>').join('');
+  });
 }
 
 // ── FORM ──────────────────────────────────────────────────────────────────
@@ -686,9 +715,11 @@ async function handleImportCSV(e) {
 const mesAtual = new Date().getMonth();
 document.getElementById('fMes').value      = mesAtual;
 document.getElementById('filtroMes').value = mesAtual;
-preencherFiltroTipo();
-setMov('saida');
-renderTabela();
+carregarContas().then(() => {
+  preencherFiltroTipo();
+  setMov('saida');
+  renderTabela();
+});
 </script>
 </body>
 </html>
