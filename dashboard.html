@@ -153,6 +153,7 @@
   <div class="brand">💰 Financeiro <span>2026</span></div>
   <a href="index.html">Lançamentos</a>
   <a href="dashboard.html" class="active">Dashboard</a>
+  <a href="config.html">Configurações</a>
 </nav>
 
 <div class="filter-bar">
@@ -163,10 +164,6 @@
   <label for="cartaoSelect">Cartão:</label>
   <select id="cartaoSelect">
     <option value="todos">Todos</option>
-    <option value="Bradesco">Bradesco</option>
-    <option value="Nubank">Nubank</option>
-    <option value="Itaú">Itaú</option>
-    <option value="Fixo">Fixo</option>
   </select>
 </div>
 
@@ -273,7 +270,8 @@
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-const CARTOES = ['Bradesco','Nubank','Itaú'];
+const CARTOES = ['Bradesco','Nubank','Itaú']; // fallback; sobrescrito por carregarContas()
+let _contas = [];
 
 const TIPO_CORES = {
   'Casa':'#6c63ff','Silvia':'#f472b6','Lazer':'#f59e0b','Roupa':'#06b6d4',
@@ -288,6 +286,18 @@ let charts = {};
 // ── INIT ──────────────────────────────────────────────────────────────────
 
 async function init() {
+  // Carrega contas e preenche filtro dinamicamente
+  _contas = await contasGetAll();
+  const cartaoSel = document.getElementById('cartaoSelect');
+  cartaoSel.innerHTML = '<option value="todos">Todos</option>' +
+    _contas.map(c => '<option value="' + c.nome + '">' + c.nome + '</option>').join('');
+
+  // Atualiza CARTOES para os que são do tipo cartão (usados nos gráficos por cartão)
+  // eslint-disable-next-line no-global-assign
+  CARTOES.length = 0;
+  _contas.filter(c => c.tipo === 'cartao').forEach(c => CARTOES.push(c.nome));
+  if (CARTOES.length === 0) _contas.forEach(c => CARTOES.push(c.nome)); // fallback
+
   allTransacoes = await dbGetAll();
 
   if (allTransacoes.length === 0) {
@@ -313,7 +323,7 @@ async function init() {
   renderDashboard();
 
   sel.addEventListener('change', renderDashboard);
-  document.getElementById('cartaoSelect').addEventListener('change', renderDashboard);
+  cartaoSel.addEventListener('change', renderDashboard);
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────
@@ -402,13 +412,13 @@ function renderBarCartoes(mesIdx) {
   if (mesIdx !== -1) base = base.filter(t => t.mesIdx === mesIdx);
 
   const labels = CARTOES;
+  const cores  = CARTOES.map(n => { const c = _contas.find(x => x.nome === n); return c ? c.cor : '#94a3b8'; });
   const data   = CARTOES.map(c => base.filter(t => t.cartao === c).reduce((s,t) => s + t.valor, 0));
-  const colors = ['#6c63ff','#f472b6','#f59e0b'];
 
   if (charts.bar) charts.bar.destroy();
   charts.bar = new Chart(document.getElementById('chartCartoes'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Total (R$)', data, backgroundColor: colors, borderRadius: 6 }] },
+    data: { labels, datasets: [{ label: 'Total (R$)', data, backgroundColor: cores, borderRadius: 6 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
@@ -424,16 +434,20 @@ function renderLinhas() {
   const mesesPresentes = [...new Set(allTransacoes.map(t => t.mesIdx))].sort((a,b) => a - b);
   const labels = mesesPresentes.map(i => MESES[i].substring(0, 3));
 
-  const datasets = CARTOES.map((c, i) => ({
-    label: c,
-    data: mesesPresentes.map(m =>
-      allTransacoes.filter(t => t.cartao === c && t.mesIdx === m && (t.mov||'saida') === 'saida')
-                   .reduce((s,t) => s + t.valor, 0)
-    ),
-    borderColor:     ['#6c63ff','#f472b6','#f59e0b'][i],
-    backgroundColor: ['#6c63ff33','#f472b633','#f59e0b33'][i],
-    tension: 0.4, fill: true, pointRadius: 4,
-  }));
+  const datasets = CARTOES.map((c) => {
+    const conta = _contas.find(x => x.nome === c);
+    const cor   = conta ? conta.cor : '#94a3b8';
+    return {
+      label: c,
+      data: mesesPresentes.map(m =>
+        allTransacoes.filter(t => t.cartao === c && t.mesIdx === m && (t.mov||'saida') === 'saida')
+                     .reduce((s,t) => s + t.valor, 0)
+      ),
+      borderColor:     cor,
+      backgroundColor: cor + '33',
+      tension: 0.4, fill: true, pointRadius: 4,
+    };
+  });
 
   if (charts.linhas) charts.linhas.destroy();
   charts.linhas = new Chart(document.getElementById('chartLinhas'), {

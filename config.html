@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Financeiro 2026 — Configurações</title>
+  <style>
+    :root {
+      --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--accent:#6c63ff;
+      --green:#22c55e;--red:#ef4444;--text:#e2e8f0;--muted:#94a3b8;--border:#2d3148;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
+    nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center}
+    nav .brand{font-size:1.2rem;font-weight:700;padding:1rem 1.5rem 1rem 0;color:var(--text)}
+    nav .brand span{color:var(--accent)}
+    nav a{color:var(--muted);text-decoration:none;padding:1rem 1.25rem;font-size:.9rem;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+    nav a:hover{color:var(--text)}
+    nav a.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .main{padding:2rem;max-width:700px;margin:0 auto}
+    h1{font-size:1.25rem;font-weight:700;margin-bottom:1.5rem}
+    h1 span{color:var(--muted);font-size:.9rem;font-weight:400;margin-left:.5rem}
+
+    /* ── FORM ── */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem}
+    .card h2{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1.25rem}
+    .form-row{display:grid;grid-template-columns:1fr 160px 56px auto;gap:.75rem;align-items:end}
+    @media(max-width:600px){.form-row{grid-template-columns:1fr 1fr;}}
+    .form-group{display:flex;flex-direction:column;gap:.35rem}
+    .form-group label{font-size:.78rem;color:var(--muted)}
+    .form-group input,.form-group select{
+      background:var(--surface2);color:var(--text);border:1px solid var(--border);
+      border-radius:8px;padding:.5rem .8rem;font-size:.9rem;outline:none;transition:border-color .2s;width:100%}
+    .form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+    input[type=color]{padding:.25rem .4rem;height:38px;cursor:pointer;border-radius:8px}
+
+    /* ── BOTÕES ── */
+    .btn{padding:.5rem 1.1rem;border-radius:8px;border:none;font-size:.88rem;font-weight:600;cursor:pointer;transition:opacity .2s,transform .1s;white-space:nowrap}
+    .btn:active{transform:scale(.97)}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-danger{background:var(--red);color:#fff}
+    .btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+    .btn:hover{opacity:.85}
+    .btn-icon{background:none;border:none;cursor:pointer;font-size:1rem;padding:.2rem .4rem;border-radius:6px;transition:background .2s}
+    .btn-icon:hover{background:var(--surface2)}
+
+    /* ── LISTA ── */
+    .conta-list{display:flex;flex-direction:column;gap:.5rem}
+    .conta-item{
+      display:flex;align-items:center;gap:.75rem;
+      background:var(--surface2);border:1px solid var(--border);
+      border-radius:10px;padding:.65rem 1rem;
+    }
+    .conta-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+    .conta-nome{font-weight:600;font-size:.95rem;flex:1}
+    .conta-tipo{font-size:.75rem;color:var(--muted);background:var(--surface);
+                border:1px solid var(--border);border-radius:999px;padding:.1rem .55rem}
+    .conta-item.editando{border-color:var(--accent);background:#6c63ff0d}
+
+    /* ── TOAST ── */
+    #toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--green);color:#fff;
+           padding:.7rem 1.4rem;border-radius:10px;font-size:.9rem;font-weight:600;
+           opacity:0;pointer-events:none;transition:opacity .3s;z-index:999}
+    #toast.show{opacity:1}
+    #toast.error{background:var(--red)}
+
+    /* ── MODAL ── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;
+                   align-items:center;justify-content:center;z-index:100;opacity:0;
+                   pointer-events:none;transition:opacity .2s}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+           padding:1.75rem 2rem;width:100%;max-width:420px;transform:translateY(20px);transition:transform .2s}
+    .modal-overlay.open .modal{transform:translateY(0)}
+    .modal h2{font-size:1rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem}
+    .modal p{color:var(--muted);margin-bottom:1.5rem;font-size:.95rem;line-height:1.5}
+
+    /* ── SECTION TITLE ── */
+    .section-title{font-size:.75rem;font-weight:700;text-transform:uppercase;
+                   letter-spacing:.1em;color:var(--accent);margin-bottom:.75rem;
+                   padding-left:.25rem}
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">💰 Financeiro <span>2026</span></div>
+  <a href="index.html">Lançamentos</a>
+  <a href="dashboard.html">Dashboard</a>
+  <a href="config.html" class="active">Configurações</a>
+</nav>
+
+  <div class="main">
+  <h1>Configurações <span>contas, cartões e categorias</span></h1>
+
+  <!-- ══ SEÇÃO CONTAS ══ -->
+  <div class="section-title">💳 Contas e Cartões</div>
+
+  <!-- Formulário contas -->
+  <div class="card">
+    <h2 id="formTitle">Nova Conta / Cartão</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fNome">Nome</label>
+        <input id="fNome" type="text" placeholder="Ex: Nubank, Carteira…" autocomplete="off"/>
+      </div>
+      <div class="form-group">
+        <label for="fTipo">Tipo</label>
+        <select id="fTipo">
+          <option value="cartao">Cartão de crédito</option>
+          <option value="carteira">Carteira / Dinheiro</option>
+          <option value="conta">Conta corrente</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="fCor">Cor</label>
+        <input id="fCor" type="color" value="#6c63ff"/>
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="salvar()">Salvar</button>
+      </div>
+    </div>
+    <div style="margin-top:.75rem;display:flex;gap:.5rem">
+      <button class="btn btn-ghost" id="btnCancelar" style="display:none" onclick="limparForm()">Cancelar edição</button>
+    </div>
+  </div>
+
+  <!-- Lista contas -->
+  <div class="card">
+    <h2>Contas cadastradas</h2>
+    <div class="conta-list" id="contaList">
+      <p style="color:var(--muted);font-size:.9rem">Carregando…</p>
+    </div>
+  </div>
+
+  <!-- ══ SEÇÃO CATEGORIAS ══ -->
+  <div class="section-title" style="margin-top:1rem">🏷️ Categorias</div>
+
+  <!-- Formulário categorias -->
+  <div class="card">
+    <h2 id="catFormTitle">Nova Categoria</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="cNome">Nome</label>
+        <input id="cNome" type="text" placeholder="Ex: Viagem, Pet…" autocomplete="off"/>
+      </div>
+      <div class="form-group">
+        <label for="cMov">Movimento</label>
+        <select id="cMov">
+          <option value="saida">📤 Saída</option>
+          <option value="entrada">📥 Entrada</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="cCor">Cor</label>
+        <input id="cCor" type="color" value="#6c63ff"/>
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="catSalvar()">Salvar</button>
+      </div>
+    </div>
+    <div style="margin-top:.75rem;display:flex;gap:.5rem">
+      <button class="btn btn-ghost" id="catBtnCancelar" style="display:none" onclick="catLimparForm()">Cancelar edição</button>
+    </div>
+  </div>
+
+  <!-- Listas de categorias -->
+  <div class="card">
+    <h2>Categorias de Saída</h2>
+    <div class="conta-list" id="catListSaida">
+      <p style="color:var(--muted);font-size:.9rem">Carregando…</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Categorias de Entrada</h2>
+    <div class="conta-list" id="catListEntrada">
+      <p style="color:var(--muted);font-size:.9rem">Carregando…</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal confirmação -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Confirmar</h2>
+    <p id="modalMsg"></p>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-danger" id="modalConfirm">Confirmar</button>
+      <button class="btn btn-ghost"  onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="db.js"></script>
+<script>
+const TIPO_LABEL = {
+  cartao:    '💳 Cartão',
+  carteira:  '👛 Carteira',
+  conta:     '🏦 Conta',
+  outro:     '📁 Outro',
+};
+
+let editandoId = null;
+
+// ── FORM ──────────────────────────────────────────────────────────────────
+
+function limparForm() {
+  editandoId = null;
+  document.getElementById('formTitle').textContent = 'Nova Conta / Cartão';
+  document.getElementById('fNome').value  = '';
+  document.getElementById('fTipo').value  = 'cartao';
+  document.getElementById('fCor').value   = '#6c63ff';
+  document.getElementById('btnCancelar').style.display = 'none';
+}
+
+async function salvar() {
+  const nome = document.getElementById('fNome').value.trim();
+  const tipo = document.getElementById('fTipo').value;
+  const cor  = document.getElementById('fCor').value;
+
+  if (!nome) return toast('Informe o nome da conta.', true);
+
+  // Verifica duplicata (exceto ao editar a própria)
+  const todas = await contasGetAll();
+  const dup = todas.find(c => c.nome.toLowerCase() === nome.toLowerCase() && c.id !== editandoId);
+  if (dup) return toast('Já existe uma conta com esse nome.', true);
+
+  if (editandoId !== null) {
+    await contasUpdate({ id: editandoId, nome, tipo, cor });
+    toast('Conta atualizada!');
+  } else {
+    await contasAdd({ nome, tipo, cor });
+    toast('Conta adicionada!');
+  }
+
+  limparForm();
+  await renderLista();
+}
+
+// ── EDITAR / EXCLUIR ──────────────────────────────────────────────────────
+
+async function editar(id) {
+  const todas = await contasGetAll();
+  const c = todas.find(x => x.id === id);
+  if (!c) return;
+  editandoId = id;
+  document.getElementById('formTitle').textContent = '✏️ Editar: ' + c.nome;
+  document.getElementById('fNome').value = c.nome;
+  document.getElementById('fTipo').value = c.tipo;
+  document.getElementById('fCor').value  = c.cor || '#6c63ff';
+  document.getElementById('btnCancelar').style.display = 'inline-block';
+  // Destaca item na lista
+  document.querySelectorAll('.conta-item').forEach(el =>
+    el.classList.toggle('editando', parseInt(el.dataset.id) === id));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function excluir(id, nome) {
+  abrirModal(
+    'Excluir conta',
+    'Excluir "' + nome + '"? Os lançamentos vinculados a ela não serão apagados, mas ficarão sem conta associada.',
+    async () => {
+      await contasDelete(id);
+      toast('"' + nome + '" removida.');
+      if (editandoId === id) limparForm();
+      await renderLista();
+    }
+  );
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+
+async function renderLista() {
+  const contas = await contasGetAll();
+  const el = document.getElementById('contaList');
+
+  if (contas.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:.9rem">Nenhuma conta cadastrada.</p>';
+    return;
+  }
+
+  el.innerHTML = contas.map(c => {
+    const label = TIPO_LABEL[c.tipo] || c.tipo;
+    const cor   = c.cor || '#94a3b8';
+    return '<div class="conta-item" data-id="' + c.id + '">' +
+      '<div class="conta-dot" style="background:' + cor + '"></div>' +
+      '<span class="conta-nome">' + c.nome + '</span>' +
+      '<span class="conta-tipo">' + label + '</span>' +
+      '<button class="btn-icon" title="Editar"  onclick="editar(' + c.id + ')">✏️</button>' +
+      '<button class="btn-icon" title="Excluir" onclick="excluir(' + c.id + ', \'' + c.nome.replace(/'/g,"\\'") + '\')">🗑️</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────
+
+function abrirModal(titulo, msg, onConfirm) {
+  document.getElementById('modalTitle').textContent = titulo;
+  document.getElementById('modalMsg').textContent   = msg;
+  document.getElementById('modalConfirm').onclick   = () => { fecharModal(); onConfirm(); };
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function fecharModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) fecharModal();
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function toast(msg, erro) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (erro ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// ── CATEGORIAS ────────────────────────────────────────────────────────────
+
+let catEditandoId = null;
+
+function catLimparForm() {
+  catEditandoId = null;
+  document.getElementById('catFormTitle').textContent = 'Nova Categoria';
+  document.getElementById('cNome').value = '';
+  document.getElementById('cMov').value  = 'saida';
+  document.getElementById('cCor').value  = '#6c63ff';
+  document.getElementById('catBtnCancelar').style.display = 'none';
+  document.querySelectorAll('.conta-item[data-cat-id]').forEach(el => el.classList.remove('editando'));
+}
+
+async function catSalvar() {
+  const nome = document.getElementById('cNome').value.trim();
+  const mov  = document.getElementById('cMov').value;
+  const cor  = document.getElementById('cCor').value;
+
+  if (!nome) return toast('Informe o nome da categoria.', true);
+
+  const todas = await catsGetAll();
+  const dup = todas.find(c =>
+    c.nome.toLowerCase() === nome.toLowerCase() &&
+    c.mov === mov &&
+    c.id !== catEditandoId
+  );
+  if (dup) return toast('Já existe essa categoria para ' + (mov === 'saida' ? 'Saída' : 'Entrada') + '.', true);
+
+  if (catEditandoId !== null) {
+    await catsUpdate({ id: catEditandoId, nome, mov, cor });
+    toast('Categoria atualizada!');
+  } else {
+    await catsAdd({ nome, mov, cor });
+    toast('Categoria adicionada!');
+  }
+
+  catLimparForm();
+  await renderCats();
+}
+
+async function catEditar(id) {
+  const todas = await catsGetAll();
+  const c = todas.find(x => x.id === id);
+  if (!c) return;
+  catEditandoId = id;
+  document.getElementById('catFormTitle').textContent = '✏️ Editar: ' + c.nome;
+  document.getElementById('cNome').value = c.nome;
+  document.getElementById('cMov').value  = c.mov;
+  document.getElementById('cCor').value  = c.cor || '#6c63ff';
+  document.getElementById('catBtnCancelar').style.display = 'inline-block';
+  document.querySelectorAll('.conta-item[data-cat-id]').forEach(el =>
+    el.classList.toggle('editando', parseInt(el.dataset.catId) === id));
+  // Scroll até o formulário de categorias
+  document.getElementById('catFormTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function catExcluir(id, nome) {
+  abrirModal(
+    'Excluir categoria',
+    'Excluir "' + nome + '"? Os lançamentos com essa categoria não serão apagados.',
+    async () => {
+      await catsDelete(id);
+      toast('"' + nome + '" removida.');
+      if (catEditandoId === id) catLimparForm();
+      await renderCats();
+    }
+  );
+}
+
+function renderCatItem(c) {
+  const cor = c.cor || '#94a3b8';
+  const nomeEsc = c.nome.replace(/'/g, "\\'");
+  return '<div class="conta-item" data-cat-id="' + c.id + '">' +
+    '<div class="conta-dot" style="background:' + cor + '"></div>' +
+    '<span class="conta-nome">' + c.nome + '</span>' +
+    '<button class="btn-icon" title="Editar"  onclick="catEditar(' + c.id + ')">✏️</button>' +
+    '<button class="btn-icon" title="Excluir" onclick="catExcluir(' + c.id + ', \'' + nomeEsc + '\')">🗑️</button>' +
+  '</div>';
+}
+
+async function renderCats() {
+  const todas = await catsGetAll();
+
+  const saidas   = todas.filter(c => c.mov === 'saida');
+  const entradas = todas.filter(c => c.mov === 'entrada');
+
+  const elS = document.getElementById('catListSaida');
+  const elE = document.getElementById('catListEntrada');
+
+  elS.innerHTML = saidas.length
+    ? saidas.map(renderCatItem).join('')
+    : '<p style="color:var(--muted);font-size:.9rem">Nenhuma categoria de saída.</p>';
+
+  elE.innerHTML = entradas.length
+    ? entradas.map(renderCatItem).join('')
+    : '<p style="color:var(--muted);font-size:.9rem">Nenhuma categoria de entrada.</p>';
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+
+renderLista();
+renderCats();
+</script>
+</body>
+</html>
