@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Financeiro 2026 — Lançamentos</title>
+  <title>Financeiro Fácil — Lançamentos</title>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     :root {
@@ -78,11 +78,12 @@
              border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;flex-wrap:wrap}
     .sel-bar.visible{display:flex}
     .sel-bar span{font-size:.9rem;color:var(--accent);font-weight:600}
+    .btn:disabled{opacity:.35;cursor:not-allowed}
   </style>
 </head>
 <body>
 <nav>
-  <div class="brand">💰 Financeiro <span>2026</span></div>
+  <div class="brand">💰 Financeiro <span>Fácil</span></div>
   <a href="index.html" class="active">Lançamentos</a>
   <a href="dashboard.html">Dashboard</a>
   <a href="config.html">Configurações</a>
@@ -113,6 +114,10 @@
           <option value="8">Setembro</option><option value="9">Outubro</option>
           <option value="10">Novembro</option><option value="11">Dezembro</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label for="fAno">Ano</label>
+        <select id="fAno"></select>
       </div>
       <div class="form-group" style="grid-column:span 2">
         <label for="fDesc">Descrição</label>
@@ -146,6 +151,7 @@
   <!-- barra de seleção múltipla -->
   <div class="sel-bar" id="selBar">
     <span id="selCount">0 selecionados</span>
+    <button class="btn btn-ghost" id="btnAlterarCat" onclick="abrirAlterarCategoria()" disabled title="Selecione lançamentos do mesmo tipo (só saída ou só entrada)">🏷 Alterar categoria</button>
     <button class="btn btn-danger" onclick="excluirSelecionados()">🗑 Excluir selecionados</button>
     <button class="btn btn-ghost"  onclick="limparSelecao()">Cancelar</button>
   </div>
@@ -166,6 +172,8 @@
       <option value="8">Setembro</option><option value="9">Outubro</option>
       <option value="10">Novembro</option><option value="11">Dezembro</option>
     </select>
+    <label>Ano:</label>
+    <select id="filtroAno"><option value="-1">Todos</option></select>
     <label>Conta:</label>
     <select id="filtroCartao">
       <option value="todos">Todos</option>
@@ -183,6 +191,7 @@
         <button class="btn btn-ghost" onclick="exportarJSON()">⬇ Exportar</button>
         <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆ Importar JSON</button>
         <input type="file" id="importFile" accept=".json" onchange="handleImport(event)"/>
+        <button class="btn btn-ghost" onclick="abrirAtualizarAno()">📅 Atualizar ano</button>
         <button class="btn btn-danger" onclick="confirmarLimpar()">🗑 Limpar tudo</button>
       </div>
     </div>
@@ -190,7 +199,7 @@
       <thead>
         <tr>
           <th><input type="checkbox" id="chkTodos" title="Selecionar todos" onchange="toggleTodos(this.checked)"/></th>
-          <th>Mov.</th><th>Conta</th><th>Mês</th><th>Descrição</th>
+          <th>Mov.</th><th>Conta</th><th>Ano</th><th>Mês</th><th>Descrição</th>
           <th>Categoria</th><th>Venc</th>
           <th style="text-align:right">Valor</th>
           <th style="text-align:center">Ações</th>
@@ -203,6 +212,22 @@
     </div>
   </div>
 </div>
+<!-- Modal alterar categoria -->
+<div class="modal-overlay" id="modalCatOverlay">
+  <div class="modal">
+    <h2 id="modalCatTitle">🏷 Alterar Categoria</h2>
+    <p id="modalCatInfo" style="color:var(--muted);font-size:.85rem;margin-bottom:1rem"></p>
+    <div class="form-group" style="margin-bottom:1.5rem">
+      <label for="selNovaCat" style="font-size:.8rem;color:var(--muted)">Nova categoria</label>
+      <select id="selNovaCat" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.55rem .85rem;font-size:.95rem;outline:none;margin-top:.35rem"></select>
+    </div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="confirmarAlterarCategoria()">Aplicar</button>
+      <button class="btn btn-ghost"   onclick="fecharModalCat()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <h2 id="modalTitle">Confirmar</h2>
@@ -210,6 +235,30 @@
     <div style="display:flex;gap:.75rem">
       <button class="btn btn-danger" id="modalConfirm">Confirmar</button>
       <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal atualizar ano -->
+<div class="modal-overlay" id="modalAno">
+  <div class="modal">
+    <h2>📅 Atualizar Ano em Massa</h2>
+    <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:1.5rem">
+      <div style="display:flex;flex-direction:column;gap:.35rem">
+        <label style="font-size:.8rem;color:var(--muted)">Alterar lançamentos do ano</label>
+        <select id="anoOrigem" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem;font-size:.9rem;outline:none">
+          <option value="-1">Todos (sem filtro de ano)</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.35rem">
+        <label style="font-size:.8rem;color:var(--muted)">Para o ano</label>
+        <select id="anoDestino" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem;font-size:.9rem;outline:none"></select>
+      </div>
+      <p id="anoPreview" style="font-size:.85rem;color:var(--muted);background:var(--surface2);border-radius:8px;padding:.6rem .9rem"></p>
+    </div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn btn-primary" onclick="executarAtualizarAno()">Atualizar</button>
+      <button class="btn btn-ghost"   onclick="fecharModalAno()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -322,12 +371,14 @@ function preencherFiltroTipo() {
 // ── FORM ──────────────────────────────────────────────────────────────────
 function limparForm() {
   editandoId = null;
+  const anoAtual = new Date().getFullYear();
   document.getElementById('formTitle').textContent = '➕ Novo Lançamento';
   document.getElementById('fDesc').value  = '';
   document.getElementById('fValor').value = '';
   document.getElementById('fVenc').value  = '';
   document.getElementById('fParc').value  = '1';
   document.getElementById('fMes').value   = new Date().getMonth();
+  document.getElementById('fAno').value   = anoAtual;
   document.getElementById('btnCancelar').style.display = 'none';
   document.getElementById('grupoParc').style.display   = 'flex';
   setMov('saida');
@@ -338,6 +389,7 @@ async function salvarLancamento() {
   const mov    = document.getElementById('fMov').value;
   const cartao = document.getElementById('fCartao').value;
   const mesIdx = parseInt(document.getElementById('fMes').value);
+  const ano    = parseInt(document.getElementById('fAno').value);
   const desc   = document.getElementById('fDesc').value.trim();
   const tipo   = document.getElementById('fTipo').value;
   const venc   = document.getElementById('fVenc').value.trim();
@@ -348,7 +400,7 @@ async function salvarLancamento() {
   if (!valor || valor <= 0) return toast('Informe um valor válido.', true);
 
   if (editandoId !== null) {
-    await dbUpdate({ id: editandoId, mov, cartao, mesIdx, mes: MESES_PT[mesIdx],
+    await dbUpdate({ id: editandoId, mov, cartao, ano, mesIdx, mes: MESES_PT[mesIdx],
                      descricao: desc, tipo, venc, valor });
     toast('Lançamento atualizado!');
     limparForm();
@@ -357,14 +409,16 @@ async function salvarLancamento() {
   }
 
   if (parc <= 1 || mov === 'entrada') {
-    await dbAdd({ mov, cartao, mesIdx, mes: MESES_PT[mesIdx],
+    await dbAdd({ mov, cartao, ano, mesIdx, mes: MESES_PT[mesIdx],
                   descricao: desc, tipo, venc, valor });
     toast('Lançamento salvo!');
   } else {
     const vp = Math.round((valor / parc) * 100) / 100;
     for (let i = 0; i < parc; i++) {
-      const mi = (mesIdx + i) % 12;
-      await dbAdd({ mov, cartao, mesIdx: mi, mes: MESES_PT[mi],
+      const mi    = (mesIdx + i) % 12;
+      // Avança o ano quando o mês passa de dezembro
+      const avancoAno = Math.floor((mesIdx + i) / 12);
+      await dbAdd({ mov, cartao, ano: ano + avancoAno, mesIdx: mi, mes: MESES_PT[mi],
                     descricao: desc + ' (' + (i+1) + '/' + parc + ')',
                     tipo, venc, valor: vp });
     }
@@ -386,6 +440,7 @@ async function editarLancamento(id) {
   preencherCats(mov, t.tipo);
   document.getElementById('fCartao').value = t.cartao;
   document.getElementById('fMes').value    = t.mesIdx;
+  document.getElementById('fAno').value    = t.ano || new Date().getFullYear();
   document.getElementById('fDesc').value   = t.descricao;
   document.getElementById('fVenc').value   = t.venc || '';
   document.getElementById('fValor').value  = t.valor;
@@ -415,13 +470,22 @@ async function renderTabela() {
   const todos   = await dbGetAll();
   const movF    = document.getElementById('filtroMov').value;
   const mesF    = parseInt(document.getElementById('filtroMes').value);
+  const anoF    = parseInt(document.getElementById('filtroAno').value);
   const cartaoF = document.getElementById('filtroCartao').value;
   const tipoF   = document.getElementById('filtroTipo').value;
   const busca   = document.getElementById('filtroBusca').value.toLowerCase().trim();
 
+  // Atualiza lista de anos disponíveis
+  const anosDisp = [...new Set(todos.map(t => t.ano).filter(Boolean))].sort((a,b) => b - a);
+  const filtroAnoEl = document.getElementById('filtroAno');
+  const anoAtual = filtroAnoEl.value;
+  filtroAnoEl.innerHTML = '<option value="-1">Todos</option>' +
+    anosDisp.map(a => '<option value="' + a + '"' + (String(a) === anoAtual ? ' selected' : '') + '>' + a + '</option>').join('');
+
   let lista = todos;
   if (movF    !== 'todos') lista = lista.filter(t => (t.mov||'saida') === movF);
   if (mesF    !== -1)      lista = lista.filter(t => t.mesIdx === mesF);
+  if (anoF    !== -1)      lista = lista.filter(t => (t.ano || 0) === anoF);
   if (cartaoF !== 'todos') lista = lista.filter(t => t.cartao === cartaoF);
   if (tipoF   !== 'todos') lista = lista.filter(t => t.tipo   === tipoF);
   if (busca)               lista = lista.filter(t => t.descricao.toLowerCase().includes(busca));
@@ -429,6 +493,9 @@ async function renderTabela() {
   lista.sort((a, b) => {
     const ma = a.mov||'saida', mb = b.mov||'saida';
     if (ma !== mb) return ma === 'entrada' ? -1 : 1;
+    // Ordena por ano desc, depois mês desc, depois valor desc
+    if ((b.ano||0) !== (a.ano||0)) return (b.ano||0) - (a.ano||0);
+    if (b.mesIdx !== a.mesIdx) return b.mesIdx - a.mesIdx;
     return b.valor - a.valor;
   });
 
@@ -452,10 +519,11 @@ async function renderTabela() {
     const cor = corTipo(t.tipo, mov);
     const icon = mov === 'entrada' ? '📥' : '📤';
     const vc   = mov === 'entrada' ? 'var(--green)' : 'var(--red)';
-    return '<tr data-id="' + t.id + '">' +
+    return '<tr data-id="' + t.id + '" data-mov="' + mov + '">' +
       '<td><input type="checkbox" class="chk-linha" data-id="' + t.id + '" onchange="onCheckLinha()"/></td>' +
       '<td style="font-size:1rem">' + icon + '</td>' +
       '<td>' + t.cartao + '</td>' +
+      '<td>' + (t.ano || '—') + '</td>' +
       '<td>' + t.mes + '</td>' +
       '<td>' + t.descricao + '</td>' +
       '<td><span class="badge" style="background:' + cor + '22;color:' + cor + '">' + t.tipo + '</span></td>' +
@@ -482,18 +550,37 @@ function atualizarSelBar() {
   const bar = document.getElementById('selBar');
   bar.classList.toggle('visible', ids.length > 0);
   document.getElementById('selCount').textContent = ids.length + ' selecionado' + (ids.length !== 1 ? 's' : '');
+
   // Destaca linhas selecionadas
   document.querySelectorAll('#tabelaBody tr').forEach(tr => {
     const chk = tr.querySelector('.chk-linha');
     tr.classList.toggle('selecionada', chk && chk.checked);
   });
+
   // Atualiza estado do checkbox do cabeçalho
   const todos = document.querySelectorAll('.chk-linha');
   const chkTodos = document.getElementById('chkTodos');
-  if (todos.length === 0) { chkTodos.checked = false; chkTodos.indeterminate = false; return; }
-  if (ids.length === 0)   { chkTodos.checked = false; chkTodos.indeterminate = false; }
-  else if (ids.length === todos.length) { chkTodos.checked = true; chkTodos.indeterminate = false; }
-  else { chkTodos.checked = false; chkTodos.indeterminate = true; }
+  if (todos.length === 0) { chkTodos.checked = false; chkTodos.indeterminate = false; }
+  else if (ids.length === 0)              { chkTodos.checked = false; chkTodos.indeterminate = false; }
+  else if (ids.length === todos.length)   { chkTodos.checked = true;  chkTodos.indeterminate = false; }
+  else                                    { chkTodos.checked = false; chkTodos.indeterminate = true; }
+
+  // Habilita "Alterar categoria" só se todos os selecionados forem do mesmo movimento
+  const btnCat = document.getElementById('btnAlterarCat');
+  if (ids.length === 0) {
+    btnCat.disabled = true;
+    btnCat.title = 'Selecione lançamentos do mesmo tipo (só saída ou só entrada)';
+    return;
+  }
+  const movimentos = new Set(
+    [...document.querySelectorAll('.chk-linha:checked')]
+      .map(c => c.closest('tr').dataset.mov)
+  );
+  const homogeneo = movimentos.size === 1;
+  btnCat.disabled = !homogeneo;
+  btnCat.title = homogeneo
+    ? 'Alterar categoria dos ' + ids.length + ' lançamentos selecionados'
+    : 'Mistura de saídas e entradas — selecione apenas um tipo';
 }
 
 function onCheckLinha() { atualizarSelBar(); }
@@ -522,6 +609,125 @@ function excluirSelecionados() {
     }
   );
 }
+
+// ── ALTERAR CATEGORIA EM MASSA ────────────────────────────────────────────
+
+async function abrirAlterarCategoria() {
+  const ids = idsSelecionados();
+  if (ids.length === 0) return;
+
+  // Descobre o movimento dos selecionados (já garantido homogêneo pelo botão)
+  const mov = [...document.querySelectorAll('.chk-linha:checked')][0]
+                .closest('tr').dataset.mov || 'saida';
+
+  // Carrega categorias do tipo correto
+  const todas = await catsGetAll();
+  const cats  = todas.filter(c => c.mov === mov);
+
+  const sel = document.getElementById('selNovaCat');
+  sel.innerHTML = cats.map(c =>
+    '<option value="' + c.nome + '">' + c.nome + '</option>'
+  ).join('');
+
+  document.getElementById('modalCatTitle').textContent =
+    '🏷 Alterar Categoria — ' + (mov === 'saida' ? 'Saída' : 'Entrada');
+  document.getElementById('modalCatInfo').textContent =
+    ids.length + ' lançamento' + (ids.length !== 1 ? 's' : '') + ' serão atualizados.';
+
+  document.getElementById('modalCatOverlay').classList.add('open');
+}
+
+async function confirmarAlterarCategoria() {
+  const ids      = idsSelecionados();
+  const novaCat  = document.getElementById('selNovaCat').value;
+  if (!novaCat || ids.length === 0) return;
+
+  const todos = await dbGetAll();
+  for (const id of ids) {
+    const t = todos.find(x => x.id === id);
+    if (t) await dbUpdate({ ...t, tipo: novaCat });
+  }
+
+  fecharModalCat();
+  toast('✅ Categoria alterada para "' + novaCat + '" em ' + ids.length + ' lançamento' + (ids.length !== 1 ? 's' : '') + '.');
+  await renderTabela();
+}
+
+function fecharModalCat() {
+  document.getElementById('modalCatOverlay').classList.remove('open');
+}
+document.getElementById('modalCatOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) fecharModalCat();
+});
+
+// ── ATUALIZAR ANO EM MASSA ────────────────────────────────────────────────
+
+async function abrirAtualizarAno() {
+  const todos = await dbGetAll();
+  const anoAtualForm = parseInt(document.getElementById('fAno').value) || new Date().getFullYear();
+
+  // Popula anos de origem (anos existentes nos dados + "todos")
+  const anosExist = [...new Set(todos.map(t => t.ano).filter(Boolean))].sort((a,b) => b - a);
+  const selOrigem = document.getElementById('anoOrigem');
+  selOrigem.innerHTML = '<option value="-1">Todos (sem filtro de ano)</option>' +
+    anosExist.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+
+  // Popula anos de destino (ano atual ± 5)
+  const base = new Date().getFullYear();
+  const selDest = document.getElementById('anoDestino');
+  selDest.innerHTML = '';
+  for (let a = base + 2; a >= base - 3; a--) {
+    const opt = document.createElement('option');
+    opt.value = a; opt.textContent = a;
+    if (a === anoAtualForm) opt.selected = true;
+    selDest.appendChild(opt);
+  }
+
+  atualizarPreviewAno(todos);
+
+  selOrigem.onchange = () => atualizarPreviewAno(todos);
+  selDest.onchange   = () => atualizarPreviewAno(todos);
+
+  document.getElementById('modalAno').classList.add('open');
+}
+
+function atualizarPreviewAno(todos) {
+  const origem  = parseInt(document.getElementById('anoOrigem').value);
+  const destino = parseInt(document.getElementById('anoDestino').value);
+  const afetados = origem === -1
+    ? todos.length
+    : todos.filter(t => (t.ano || 0) === origem).length;
+  document.getElementById('anoPreview').textContent =
+    afetados + ' lançamento' + (afetados !== 1 ? 's' : '') + ' serão atualizados' +
+    (origem !== -1 ? ' de ' + origem : '') + ' para ' + destino + '.';
+}
+
+async function executarAtualizarAno() {
+  const todos   = await dbGetAll();
+  const origem  = parseInt(document.getElementById('anoOrigem').value);
+  const destino = parseInt(document.getElementById('anoDestino').value);
+
+  if (origem === destino) {
+    fecharModalAno();
+    return toast('O ano de origem e destino são iguais.', true);
+  }
+
+  const alvo = origem === -1 ? todos : todos.filter(t => (t.ano || 0) === origem);
+  for (const t of alvo) {
+    await dbUpdate({ ...t, ano: destino });
+  }
+
+  fecharModalAno();
+  toast('✅ ' + alvo.length + ' lançamento' + (alvo.length !== 1 ? 's atualizados' : ' atualizado') + ' para ' + destino + '.');
+  await renderTabela();
+}
+
+function fecharModalAno() {
+  document.getElementById('modalAno').classList.remove('open');
+}
+document.getElementById('modalAno').addEventListener('click', e => {
+  if (e.target === e.currentTarget) fecharModalAno();
+});
 
 // ── IMPORT / EXPORT ───────────────────────────────────────────────────────
 async function handleImport(e) {
@@ -559,23 +765,30 @@ function atualizarPreviewParc() {
   const parc   = parseInt(document.getElementById('fParc').value) || 1;
   const valor  = parseFloat(document.getElementById('fValor').value);
   const mesIdx = parseInt(document.getElementById('fMes').value);
+  const ano    = parseInt(document.getElementById('fAno').value) || new Date().getFullYear();
   const el     = document.getElementById('previewParc');
   if (parc <= 1) { el.textContent = ''; return; }
-  const mesFim = MESES_PT[(mesIdx + parc - 1) % 12];
+  const mesFimIdx = (mesIdx + parc - 1) % 12;
+  const anoFim    = ano + Math.floor((mesIdx + parc - 1) / 12);
+  const label     = MESES_PT[mesFimIdx] + '/' + anoFim;
   el.textContent = valor > 0
-    ? fmt(Math.round((valor/parc)*100)/100) + '/mês · até ' + mesFim
-    : 'até ' + mesFim;
+    ? fmt(Math.round((valor/parc)*100)/100) + '/mês · até ' + label
+    : 'até ' + label;
 }
-['fParc','fValor','fMes'].forEach(id =>
+['fParc','fValor','fMes','fAno'].forEach(id =>
   document.getElementById(id).addEventListener('input', atualizarPreviewParc));
 
 // ── FILTROS ───────────────────────────────────────────────────────────────
-['filtroMov','filtroMes','filtroCartao','filtroTipo','filtroBusca'].forEach(id => {
+['filtroMov','filtroMes','filtroAno','filtroCartao','filtroTipo','filtroBusca'].forEach(id => {
   document.getElementById(id).addEventListener('change', renderTabela);
   document.getElementById(id).addEventListener('input',  renderTabela);
 });
 document.getElementById('fMes').addEventListener('change', () => {
   document.getElementById('filtroMes').value = document.getElementById('fMes').value;
+  renderTabela();
+});
+document.getElementById('fAno').addEventListener('change', () => {
+  document.getElementById('filtroAno').value = document.getElementById('fAno').value;
   renderTabela();
 });
 
@@ -608,10 +821,17 @@ function cartaoPeloNome(nome) {
   return null;
 }
 
+// Tenta extrair o ano do nome do arquivo (ex: "Financeiro - Bradesco 2025.csv")
+function anoPeloNome(nome) {
+  const m = nome.match(/\b(20\d{2})\b/);
+  return m ? parseInt(m[1]) : new Date().getFullYear();
+}
+
 // Parser cartões (4 colunas: Desc, Tipo, Venc, Valor)
 function parseCSVCartao(texto, nomeArquivo) {
   const rows = Papa.parse(texto, { skipEmptyLines: false }).data;
   const cartao = cartaoPeloNome(nomeArquivo);
+  const ano    = anoPeloNome(nomeArquivo);
   const info   = detectarMeses(rows);
   if (!info) return [];
   const { linhaHeader, meses } = info;
@@ -627,7 +847,7 @@ function parseCSVCartao(texto, nomeArquivo) {
       if (dn === 'descricao' || dn === 'total') continue;
       const valor = parseValorCSV(vs);
       if (valor <= 0) continue;
-      out.push({ mov:'saida', cartao, mesIdx, mes: MESES_PT[mesIdx],
+      out.push({ mov:'saida', cartao, ano, mesIdx, mes: MESES_PT[mesIdx],
                  descricao: desc, tipo: tipo||'Outros', venc, valor });
     }
   }
@@ -635,8 +855,9 @@ function parseCSVCartao(texto, nomeArquivo) {
 }
 
 // Parser gastos fixos (3 colunas: Desc, Venc, Valor) com seções Pagar/Receber
-function parseCSVFixo(texto) {
+function parseCSVFixo(texto, nomeArquivo) {
   const rows = Papa.parse(texto, { skipEmptyLines: false }).data;
+  const ano  = anoPeloNome(nomeArquivo || '');
   const info = detectarMeses(rows);
   if (!info) return [];
   const { linhaHeader, meses } = info;
@@ -685,7 +906,7 @@ function parseCSVFixo(texto) {
         else if (d.includes('emprestimo'))                  tipo = 'Outros';
         else                                                tipo = 'Outros';
       }
-      out.push({ mov: secao, cartao: 'Fixo', mesIdx, mes: MESES_PT[mesIdx],
+      out.push({ mov: secao, cartao: 'Fixo', ano, mesIdx, mes: MESES_PT[mesIdx],
                  descricao: desc, tipo, venc, valor });
     }
   }
@@ -700,7 +921,7 @@ async function handleImportCSV(e) {
     try {
       const texto  = await file.text();
       const cartao = cartaoPeloNome(file.name);
-      const lista  = cartao ? parseCSVCartao(texto, file.name) : parseCSVFixo(texto);
+      const lista  = cartao ? parseCSVCartao(texto, file.name) : parseCSVFixo(texto, file.name);
       for (const t of lista) await dbAdd(t);
       total += lista.length;
     } catch(err) { erros.push(file.name + ': ' + err.message); }
@@ -713,8 +934,21 @@ async function handleImportCSV(e) {
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 const mesAtual = new Date().getMonth();
+const anoAtual = new Date().getFullYear();
+
+// Popula select de anos no formulário (ano atual ± 3)
+const selAno = document.getElementById('fAno');
+for (let a = anoAtual + 1; a >= anoAtual - 3; a--) {
+  const opt = document.createElement('option');
+  opt.value = a;
+  opt.textContent = a;
+  if (a === anoAtual) opt.selected = true;
+  selAno.appendChild(opt);
+}
+
 document.getElementById('fMes').value      = mesAtual;
 document.getElementById('filtroMes').value = mesAtual;
+document.getElementById('filtroAno').value = anoAtual;
 carregarContas().then(() => {
   preencherFiltroTipo();
   setMov('saida');
