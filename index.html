@@ -369,19 +369,40 @@ function preencherFiltroTipo() {
 }
 
 // ── FORM ──────────────────────────────────────────────────────────────────
-function limparForm() {
+function limparForm(manterContexto = false) {
+  // Captura contexto atual ANTES de qualquer alteração
+  const movAtual    = document.getElementById('fMov').value;
+  const cartaoAtual = document.getElementById('fCartao').value;
+  const mesAtual    = document.getElementById('fMes').value;
+  const anoAtual    = document.getElementById('fAno').value;
+
   editandoId = null;
-  const anoAtual = new Date().getFullYear();
   document.getElementById('formTitle').textContent = '➕ Novo Lançamento';
   document.getElementById('fDesc').value  = '';
   document.getElementById('fValor').value = '';
   document.getElementById('fVenc').value  = '';
   document.getElementById('fParc').value  = '1';
-  document.getElementById('fMes').value   = new Date().getMonth();
-  document.getElementById('fAno').value   = anoAtual;
   document.getElementById('btnCancelar').style.display = 'none';
   document.getElementById('grupoParc').style.display   = 'flex';
-  setMov('saida');
+
+  if (manterContexto) {
+    // Restaura movimento (sem chamar setMov para não sobrescrever cartão/cats)
+    document.getElementById('fMov').value = movAtual;
+    const s = document.getElementById('togSaida');
+    const e = document.getElementById('togEntrada');
+    s.className = 'tog-btn' + (movAtual === 'saida'   ? ' active-saida'   : '');
+    e.className = 'tog-btn' + (movAtual === 'entrada' ? ' active-entrada' : '');
+    preencherCats(movAtual);
+    document.getElementById('fCartao').value = cartaoAtual;
+    document.getElementById('fMes').value    = mesAtual;
+    document.getElementById('fAno').value    = anoAtual;
+    document.getElementById('grupoParc').style.display = movAtual === 'saida' ? 'flex' : 'none';
+  } else {
+    setMov('saida');
+    document.getElementById('fMes').value = new Date().getMonth();
+    document.getElementById('fAno').value = new Date().getFullYear();
+  }
+
   atualizarPreviewParc();
 }
 
@@ -424,7 +445,7 @@ async function salvarLancamento() {
     }
     toast('✅ ' + parc + ' parcelas lançadas (' + fmt(vp) + '/mês)');
   }
-  limparForm();
+  limparForm(true);
   await renderTabela();
 }
 
