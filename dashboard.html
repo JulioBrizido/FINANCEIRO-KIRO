@@ -53,10 +53,10 @@
 </head>
 <body>
 <nav>
-  <div class="brand">Financeiro <span>2026</span></div>
-  <a href="index.html">Lancamentos</a>
+  <div class="brand">💰 Financeiro <span>Fácil</span></div>
+  <a href="index.html">Lançamentos</a>
   <a href="dashboard.html" class="active">Dashboard</a>
-  <a href="config.html">Configuracoes</a>
+  <a href="config.html">Configurações</a>
 </nav>
 <div class="filter-bar">
   <label for="mesSelect">Mes:</label>
@@ -219,6 +219,24 @@ async function init() {
   sel.addEventListener('change', renderDashboard);
   cartaoSel.addEventListener('change', renderDashboard);
   document.getElementById('anoSelect').addEventListener('change', renderDashboard);
+
+  // Ao clicar na aba Dashboard (aba ativa), reseta filtros para mês/ano atual
+  document.querySelector('nav a[href="dashboard.html"]').addEventListener('click', function(e) {
+    e.preventDefault();
+    const agora = new Date();
+    const mesNow = agora.getMonth();
+    const anoNow = agora.getFullYear();
+    const selMes = document.getElementById('mesSelect');
+    const selAno = document.getElementById('anoSelect');
+    // Seleciona mês atual se disponível, senão o último disponível
+    const mesesOpts = [...selMes.options].map(o => parseInt(o.value));
+    selMes.value = mesesOpts.includes(mesNow) ? mesNow : mesesOpts[mesesOpts.length - 1];
+    // Seleciona ano atual se disponível
+    const anosOpts = [...selAno.options].map(o => parseInt(o.value));
+    selAno.value = anosOpts.includes(anoNow) ? anoNow : (anosOpts[1] || -1);
+    document.getElementById('cartaoSelect').value = 'todos';
+    renderDashboard();
+  });
 }
 
 function renderDashboard() {
