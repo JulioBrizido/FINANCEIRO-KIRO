@@ -4,7 +4,6 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Financeiro Fácil — Lançamentos</title>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
     :root {
       --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--accent:#6c63ff;
@@ -67,7 +66,7 @@
     .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.75rem 2rem;width:100%;max-width:520px;transform:translateY(20px);transition:transform .2s}
     .modal-overlay.open .modal{transform:translateY(0)}
     .modal h2{font-size:1rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1.25rem}
-    #importFile,#importCSV{display:none}
+    #importFile{display:none}
     .summary-bar{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}
     .summary-pill{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.5rem 1rem;font-size:.85rem;color:var(--muted)}
     .summary-pill strong{color:var(--text)}
@@ -152,6 +151,8 @@
   <div class="sel-bar" id="selBar">
     <span id="selCount">0 selecionados</span>
     <button class="btn btn-ghost" id="btnAlterarCat" onclick="abrirAlterarCategoria()" disabled title="Selecione lançamentos do mesmo tipo (só saída ou só entrada)">🏷 Alterar categoria</button>
+    <button class="btn btn-ghost" onclick="exportarSelecionados()">⬇ Exportar selecionados</button>
+    <button class="btn btn-ghost" onclick="abrirRelatorio()">📄 Relatório</button>
     <button class="btn btn-danger" onclick="excluirSelecionados()">🗑 Excluir selecionados</button>
     <button class="btn btn-ghost"  onclick="limparSelecao()">Cancelar</button>
   </div>
@@ -186,13 +187,10 @@
     <div class="table-header">
       <h2>Transações</h2>
       <div class="io-row">
-        <button class="btn btn-success" onclick="document.getElementById('importCSV').click()">📥 Importar CSV</button>
-        <input type="file" id="importCSV" accept=".csv" multiple onchange="handleImportCSV(event)"/>
-        <button class="btn btn-ghost" onclick="exportarJSON()">⬇ Exportar</button>
+        <button class="btn btn-ghost" onclick="exportarJSON()">⬇ Backup</button>
         <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆ Importar JSON</button>
         <input type="file" id="importFile" accept=".json" onchange="handleImport(event)"/>
-        <button class="btn btn-ghost" onclick="abrirAtualizarAno()">📅 Atualizar ano</button>
-        <button class="btn btn-danger" onclick="confirmarLimpar()">🗑 Limpar tudo</button>
+        <button class="btn btn-danger" onclick="confirmarLimpar()">� Limpar tudo</button>
       </div>
     </div>
     <table>
@@ -239,50 +237,26 @@
   </div>
 </div>
 
-<!-- Modal atualizar ano -->
-<div class="modal-overlay" id="modalAno">
-  <div class="modal">
-    <h2>📅 Atualizar Ano em Massa</h2>
-    <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:1.5rem">
-      <div style="display:flex;flex-direction:column;gap:.35rem">
-        <label style="font-size:.8rem;color:var(--muted)">Alterar lançamentos do ano</label>
-        <select id="anoOrigem" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem;font-size:.9rem;outline:none">
-          <option value="-1">Todos (sem filtro de ano)</option>
-        </select>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:.35rem">
-        <label style="font-size:.8rem;color:var(--muted)">Para o ano</label>
-        <select id="anoDestino" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem;font-size:.9rem;outline:none"></select>
-      </div>
-      <p id="anoPreview" style="font-size:.85rem;color:var(--muted);background:var(--surface2);border-radius:8px;padding:.6rem .9rem"></p>
+<div id="toast"></div>
+
+<!-- Modal Relatório -->
+<div class="modal-overlay" id="modalRelOverlay">
+  <div class="modal" style="max-width:640px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+      <h2 style="margin:0">📄 Relatório de Lançamentos</h2>
+      <button class="btn btn-ghost" style="padding:.3rem .8rem" onclick="imprimirRelatorio()">🖨 Imprimir</button>
     </div>
-    <div style="display:flex;gap:.75rem">
-      <button class="btn btn-primary" onclick="executarAtualizarAno()">Atualizar</button>
-      <button class="btn btn-ghost"   onclick="fecharModalAno()">Cancelar</button>
+    <div id="relConteudo" style="overflow-y:auto;flex:1"></div>
+    <div style="margin-top:1.25rem;display:flex;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="fecharRelatorio()">Fechar</button>
     </div>
   </div>
 </div>
-<div id="toast"></div>
 <script src="db.js"></script>
 <script>
-const MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho',
-               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const MESES_NORM = ['janeiro','fevereiro','marco','abril','maio','junho',
-                    'julho','agosto','setembro','outubro','novembro','dezembro'];
 
-const CATS_SAIDA   = ['Casa','Mercado','Restaurante','Lazer','Saude','Roupa',
-                      'Carro','Padaria','Silvia','Leticia','Silvana','Aventureiros',
-                      'Escola','Festa','Outros'];
-const CATS_ENTRADA = ['Salario','Aluguel','Repasse','Cartao Silvia','Leticia',
-                      'Silvana','Ferias','Emprestimo','Outros'];
-
-const CATS_SAIDA_PT   = ['Casa','Mercado','Restaurante','Lazer','Saúde','Roupa',
-                         'Carro','Padaria','Silvia','Letícia','Silvana','Aventureiros',
-                         'Escola','Festa','Outros'];
-const CATS_ENTRADA_PT = ['Salário','Aluguel','Repasse','Cartão Silvia','Letícia',
-                         'Silvana','Férias','Empréstimo','Outros'];
 
 const CORES_SAIDA = {
   'Casa':'#6c63ff','Silvia':'#f472b6','Lazer':'#f59e0b','Roupa':'#06b6d4',
@@ -499,9 +473,14 @@ async function renderTabela() {
   // Atualiza lista de anos disponíveis
   const anosDisp = [...new Set(todos.map(t => t.ano).filter(Boolean))].sort((a,b) => b - a);
   const filtroAnoEl = document.getElementById('filtroAno');
-  const anoAtual = filtroAnoEl.value;
+  const anoSelecionado = filtroAnoEl.value !== '' ? filtroAnoEl.value : String(new Date().getFullYear());
   filtroAnoEl.innerHTML = '<option value="-1">Todos</option>' +
-    anosDisp.map(a => '<option value="' + a + '"' + (String(a) === anoAtual ? ' selected' : '') + '>' + a + '</option>').join('');
+    anosDisp.map(a => '<option value="' + a + '"' + (String(a) === anoSelecionado ? ' selected' : '') + '>' + a + '</option>').join('');
+  // Se o valor selecionado não existe nas opções, tenta selecionar o ano atual
+  if (!filtroAnoEl.value || filtroAnoEl.value === '-1' && anoSelecionado !== '-1') {
+    const anoAtualStr = String(new Date().getFullYear());
+    if (anosDisp.map(String).includes(anoAtualStr)) filtroAnoEl.value = anoAtualStr;
+  }
 
   let lista = todos;
   if (movF    !== 'todos') lista = lista.filter(t => (t.mov||'saida') === movF);
@@ -631,6 +610,131 @@ function excluirSelecionados() {
   );
 }
 
+async function exportarSelecionados() {
+  const ids = idsSelecionados();
+  if (ids.length === 0) return;
+  const todos = await dbGetAll();
+  const selecionados = todos.filter(t => ids.includes(t.id));
+  const payload = { transacoes: selecionados };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `lancamentos_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('⬇ ' + ids.length + ' lançamento' + (ids.length !== 1 ? 's exportados' : ' exportado') + '.');
+}
+
+async function abrirRelatorio() {
+  const ids = idsSelecionados();
+  if (ids.length === 0) return;
+  const todos = await dbGetAll();
+  const lista = todos.filter(t => ids.includes(t.id));
+
+  const entradas = lista.filter(t => t.mov === 'entrada');
+  const saidas   = lista.filter(t => (t.mov || 'saida') === 'saida');
+  const totalEnt = entradas.reduce((s, t) => s + t.valor, 0);
+  const totalSai = saidas.reduce((s, t) => s + t.valor, 0);
+  const saldo    = totalEnt - totalSai;
+
+  function linhas(grupo) {
+    if (grupo.length === 0) return '<tr><td colspan="2" style="color:#94a3b8;font-style:italic;padding:.5rem .75rem">Nenhum</td></tr>';
+    return grupo.map(t =>
+      `<tr>
+        <td style="padding:.45rem .75rem;border-bottom:1px solid #2d3148">${t.descricao}</td>
+        <td style="padding:.45rem .75rem;border-bottom:1px solid #2d3148;text-align:right;white-space:nowrap;font-weight:600;color:${t.mov==='entrada'?'#22c55e':'#ef4444'}">${fmt(t.valor)}</td>
+      </tr>`
+    ).join('');
+  }
+
+  const html = `
+    <p style="font-size:.8rem;color:#94a3b8;margin-bottom:1rem">
+      Gerado em ${new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})}
+      &nbsp;·&nbsp; ${ids.length} lançamento${ids.length !== 1 ? 's' : ''}
+    </p>
+
+    ${saidas.length > 0 ? `
+    <p style="font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Saídas</p>
+    <table style="width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1.25rem">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:.4rem .75rem;border-bottom:1px solid #2d3148;color:#94a3b8;font-weight:600">Descrição</th>
+          <th style="text-align:right;padding:.4rem .75rem;border-bottom:1px solid #2d3148;color:#94a3b8;font-weight:600">Valor</th>
+        </tr>
+      </thead>
+      <tbody>${linhas(saidas)}</tbody>
+      <tfoot>
+        <tr>
+          <td style="padding:.5rem .75rem;font-weight:700">Total saídas</td>
+          <td style="padding:.5rem .75rem;text-align:right;font-weight:700;color:#ef4444">${fmt(totalSai)}</td>
+        </tr>
+      </tfoot>
+    </table>` : ''}
+
+    ${entradas.length > 0 ? `
+    <p style="font-size:.75rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Entradas</p>
+    <table style="width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1.25rem">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:.4rem .75rem;border-bottom:1px solid #2d3148;color:#94a3b8;font-weight:600">Descrição</th>
+          <th style="text-align:right;padding:.4rem .75rem;border-bottom:1px solid #2d3148;color:#94a3b8;font-weight:600">Valor</th>
+        </tr>
+      </thead>
+      <tbody>${linhas(entradas)}</tbody>
+      <tfoot>
+        <tr>
+          <td style="padding:.5rem .75rem;font-weight:700">Total entradas</td>
+          <td style="padding:.5rem .75rem;text-align:right;font-weight:700;color:#22c55e">${fmt(totalEnt)}</td>
+        </tr>
+      </tfoot>
+    </table>` : ''}
+
+    <div style="background:#22263a;border-radius:10px;padding:.75rem 1rem;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700">Saldo</span>
+      <span style="font-weight:700;font-size:1.05rem;color:${saldo>=0?'#22c55e':'#ef4444'}">${fmt(saldo)}</span>
+    </div>`;
+
+  document.getElementById('relConteudo').innerHTML = html;
+  document.getElementById('modalRelOverlay').classList.add('open');
+}
+
+function fecharRelatorio() {
+  document.getElementById('modalRelOverlay').classList.remove('open');
+}
+
+function imprimirRelatorio() {
+  const conteudo = document.getElementById('relConteudo').innerHTML;
+  const win = window.open('', '_blank', 'width=700,height=600');
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+    <meta charset="UTF-8"/>
+    <title>Relatório de Lançamentos</title>
+    <style>
+      body{font-family:'Segoe UI',sans-serif;padding:2rem;color:#111;background:#fff}
+      h1{font-size:1.1rem;margin-bottom:.25rem}
+      table{width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:1.5rem}
+      th,td{padding:.45rem .75rem;border-bottom:1px solid #ddd;text-align:left}
+      th{font-weight:600;color:#555}
+      td:last-child,th:last-child{text-align:right}
+      tfoot td{font-weight:700;border-top:2px solid #ccc;border-bottom:none}
+      .saldo{display:flex;justify-content:space-between;font-weight:700;font-size:1rem;
+             border-top:2px solid #111;padding-top:.75rem;margin-top:.5rem}
+      p{color:#777;font-size:.8rem;margin-bottom:1rem}
+      @media print{body{padding:1rem}}
+    </style>
+  </head><body>
+    <h1>📄 Relatório de Lançamentos</h1>
+    ${conteudo}
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
+document.getElementById('modalRelOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) fecharRelatorio();
+});
+
 // ── ALTERAR CATEGORIA EM MASSA ────────────────────────────────────────────
 
 async function abrirAlterarCategoria() {
@@ -679,75 +783,6 @@ function fecharModalCat() {
 }
 document.getElementById('modalCatOverlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) fecharModalCat();
-});
-
-// ── ATUALIZAR ANO EM MASSA ────────────────────────────────────────────────
-
-async function abrirAtualizarAno() {
-  const todos = await dbGetAll();
-  const anoAtualForm = parseInt(document.getElementById('fAno').value) || new Date().getFullYear();
-
-  // Popula anos de origem (anos existentes nos dados + "todos")
-  const anosExist = [...new Set(todos.map(t => t.ano).filter(Boolean))].sort((a,b) => b - a);
-  const selOrigem = document.getElementById('anoOrigem');
-  selOrigem.innerHTML = '<option value="-1">Todos (sem filtro de ano)</option>' +
-    anosExist.map(a => '<option value="' + a + '">' + a + '</option>').join('');
-
-  // Popula anos de destino (ano atual ± 5)
-  const base = new Date().getFullYear();
-  const selDest = document.getElementById('anoDestino');
-  selDest.innerHTML = '';
-  for (let a = base + 2; a >= base - 3; a--) {
-    const opt = document.createElement('option');
-    opt.value = a; opt.textContent = a;
-    if (a === anoAtualForm) opt.selected = true;
-    selDest.appendChild(opt);
-  }
-
-  atualizarPreviewAno(todos);
-
-  selOrigem.onchange = () => atualizarPreviewAno(todos);
-  selDest.onchange   = () => atualizarPreviewAno(todos);
-
-  document.getElementById('modalAno').classList.add('open');
-}
-
-function atualizarPreviewAno(todos) {
-  const origem  = parseInt(document.getElementById('anoOrigem').value);
-  const destino = parseInt(document.getElementById('anoDestino').value);
-  const afetados = origem === -1
-    ? todos.length
-    : todos.filter(t => (t.ano || 0) === origem).length;
-  document.getElementById('anoPreview').textContent =
-    afetados + ' lançamento' + (afetados !== 1 ? 's' : '') + ' serão atualizados' +
-    (origem !== -1 ? ' de ' + origem : '') + ' para ' + destino + '.';
-}
-
-async function executarAtualizarAno() {
-  const todos   = await dbGetAll();
-  const origem  = parseInt(document.getElementById('anoOrigem').value);
-  const destino = parseInt(document.getElementById('anoDestino').value);
-
-  if (origem === destino) {
-    fecharModalAno();
-    return toast('O ano de origem e destino são iguais.', true);
-  }
-
-  const alvo = origem === -1 ? todos : todos.filter(t => (t.ano || 0) === origem);
-  for (const t of alvo) {
-    await dbUpdate({ ...t, ano: destino });
-  }
-
-  fecharModalAno();
-  toast('✅ ' + alvo.length + ' lançamento' + (alvo.length !== 1 ? 's atualizados' : ' atualizado') + ' para ' + destino + '.');
-  await renderTabela();
-}
-
-function fecharModalAno() {
-  document.getElementById('modalAno').classList.remove('open');
-}
-document.getElementById('modalAno').addEventListener('click', e => {
-  if (e.target === e.currentTarget) fecharModalAno();
 });
 
 // ── IMPORT / EXPORT ───────────────────────────────────────────────────────
@@ -813,146 +848,6 @@ document.getElementById('fAno').addEventListener('change', () => {
   renderTabela();
 });
 
-// ── IMPORT CSV ────────────────────────────────────────────────────────────
-function normalizarStr(str) {
-  return (str||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-}
-function parseValorCSV(str) {
-  if (!str) return 0;
-  const v = parseFloat(str.replace(/"/g,'').replace(/R\$\s*/g,'').replace(/\s/g,'')
-                          .replace(/\./g,'').replace(',','.').trim());
-  return isNaN(v) ? 0 : v;
-}
-function detectarMeses(rows) {
-  for (let r = 0; r < Math.min(5, rows.length); r++) {
-    const row = rows[r], enc = [];
-    for (let c = 0; c < row.length; c++) {
-      const idx = MESES_NORM.indexOf(normalizarStr(row[c]));
-      if (idx !== -1) enc.push({ col: c, mesIdx: idx });
-    }
-    if (enc.length >= 2) return { linhaHeader: r, meses: enc };
-  }
-  return null;
-}
-function cartaoPeloNome(nome) {
-  const n = nome.toLowerCase();
-  if (n.includes('bradesco')) return 'Bradesco';
-  if (n.includes('nubank'))   return 'Nubank';
-  if (n.includes('ita'))      return 'Itaú';
-  return null;
-}
-
-// Tenta extrair o ano do nome do arquivo (ex: "Financeiro - Bradesco 2025.csv")
-function anoPeloNome(nome) {
-  const m = nome.match(/\b(20\d{2})\b/);
-  return m ? parseInt(m[1]) : new Date().getFullYear();
-}
-
-// Parser cartões (4 colunas: Desc, Tipo, Venc, Valor)
-function parseCSVCartao(texto, nomeArquivo) {
-  const rows = Papa.parse(texto, { skipEmptyLines: false }).data;
-  const cartao = cartaoPeloNome(nomeArquivo);
-  const ano    = anoPeloNome(nomeArquivo);
-  const info   = detectarMeses(rows);
-  if (!info) return [];
-  const { linhaHeader, meses } = info;
-  const out = [];
-  for (const { col, mesIdx } of meses) {
-    for (let r = linhaHeader + 3; r < rows.length; r++) {
-      const row = rows[r];
-      if (!row || row.length <= col) continue;
-      const desc = (row[col]||'').trim(), tipo = (row[col+1]||'').trim();
-      const venc = (row[col+2]||'').trim(), vs  = (row[col+3]||'').trim();
-      if (!desc || !vs) continue;
-      const dn = normalizarStr(desc);
-      if (dn === 'descricao' || dn === 'total') continue;
-      const valor = parseValorCSV(vs);
-      if (valor <= 0) continue;
-      out.push({ mov:'saida', cartao, ano, mesIdx, mes: MESES_PT[mesIdx],
-                 descricao: desc, tipo: tipo||'Outros', venc, valor });
-    }
-  }
-  return out;
-}
-
-// Parser gastos fixos (3 colunas: Desc, Venc, Valor) com seções Pagar/Receber
-function parseCSVFixo(texto, nomeArquivo) {
-  const rows = Papa.parse(texto, { skipEmptyLines: false }).data;
-  const ano  = anoPeloNome(nomeArquivo || '');
-  const info = detectarMeses(rows);
-  if (!info) return [];
-  const { linhaHeader, meses } = info;
-  const IGNORAR = ['total','descricao','balanco mes','balanco geral','carteira',
-                   'balanco','pagar','receber',''];
-  const out = [];
-  for (const { col, mesIdx } of meses) {
-    let secao = 'saida';
-    for (let r = linhaHeader + 1; r < rows.length; r++) {
-      const row = rows[r];
-      if (!row || row.length <= col) continue;
-      const cell = normalizarStr(row[col]||'');
-      if (cell === 'pagar')   { secao = 'saida';  continue; }
-      if (cell === 'receber') { secao = 'entrada'; continue; }
-      const desc = (row[col]||'').trim();
-      const venc = (row[col+1]||'').trim();
-      const vs   = (row[col+2]||'').trim();
-      if (!desc || !vs) continue;
-      if (IGNORAR.includes(normalizarStr(desc))) continue;
-      const valor = parseValorCSV(vs);
-      if (valor <= 0) continue;
-
-      // Categoria automática
-      const d = normalizarStr(desc);
-      let tipo = 'Outros';
-      if (secao === 'entrada') {
-        if (d.includes('salario'))                          tipo = 'Salário';
-        else if (d.includes('aluguel'))                     tipo = 'Aluguel';
-        else if (d.includes('cartao silvia')||d.includes('silvia')&&d.includes('cartao')) tipo = 'Cartão Silvia';
-        else if (d.includes('leticia'))                     tipo = 'Letícia';
-        else if (d.includes('silvana'))                     tipo = 'Silvana';
-        else if (d.includes('ferias'))                      tipo = 'Férias';
-        else if (d.includes('emprestimo'))                  tipo = 'Empréstimo';
-        else                                                tipo = 'Outros';
-      } else {
-        if (d.includes('cond'))                             tipo = 'Casa';
-        else if (d.includes('luz')||d.includes('agua')||d.includes('internet')) tipo = 'Casa';
-        else if (d.includes('itau')||d.includes('nubank')||d.includes('bradesco')) tipo = 'Casa';
-        else if (d.includes('carro'))                       tipo = 'Carro';
-        else if (d.includes('ipva')||d.includes('iptu'))    tipo = 'Casa';
-        else if (d.includes('silvia'))                      tipo = 'Silvia';
-        else if (d.includes('leticia'))                     tipo = 'Letícia';
-        else if (d.includes('silvana'))                     tipo = 'Silvana';
-        else if (d.includes('mercado')||d.includes('vuon')) tipo = 'Mercado';
-        else if (d.includes('pos')||d.includes('avenida')||d.includes('std')||d.includes('escola')) tipo = 'Escola';
-        else if (d.includes('emprestimo'))                  tipo = 'Outros';
-        else                                                tipo = 'Outros';
-      }
-      out.push({ mov: secao, cartao: 'Fixo', ano, mesIdx, mes: MESES_PT[mesIdx],
-                 descricao: desc, tipo, venc, valor });
-    }
-  }
-  return out;
-}
-
-async function handleImportCSV(e) {
-  const files = Array.from(e.target.files);
-  if (!files.length) return;
-  let total = 0; const erros = [];
-  for (const file of files) {
-    try {
-      const texto  = await file.text();
-      const cartao = cartaoPeloNome(file.name);
-      const lista  = cartao ? parseCSVCartao(texto, file.name) : parseCSVFixo(texto, file.name);
-      for (const t of lista) await dbAdd(t);
-      total += lista.length;
-    } catch(err) { erros.push(file.name + ': ' + err.message); }
-  }
-  e.target.value = '';
-  if (erros.length) toast('Importados ' + total + '. Erros: ' + erros.join('; '), true);
-  else toast('✅ ' + total + ' lançamentos importados de ' + files.length + ' arquivo(s)!');
-  await renderTabela();
-}
-
 // ── INIT ──────────────────────────────────────────────────────────────────
 const mesAtual = new Date().getMonth();
 const anoAtual = new Date().getFullYear();
@@ -973,6 +868,18 @@ document.getElementById('filtroAno').value = anoAtual;
 carregarContas().then(() => {
   preencherFiltroTipo();
   setMov('saida');
+  renderTabela();
+});
+
+// Ao clicar na aba Lançamentos (aba ativa), reseta filtros para mês/ano atual
+document.querySelector('nav a[href="index.html"]').addEventListener('click', function(e) {
+  e.preventDefault();
+  document.getElementById('filtroMes').value = new Date().getMonth();
+  document.getElementById('filtroAno').value = new Date().getFullYear();
+  document.getElementById('filtroMov').value    = 'todos';
+  document.getElementById('filtroCartao').value = 'todos';
+  document.getElementById('filtroTipo').value   = 'todos';
+  document.getElementById('filtroBusca').value  = '';
   renderTabela();
 });
 </script>
