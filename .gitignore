@@ -3,3 +3,5 @@
 /Financeiro - Itaú.csv
 /Financeiro - Nubank.csv
 /Backup/
+node_modules/
+dist/

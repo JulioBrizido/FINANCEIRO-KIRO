@@ -1,99 +1,100 @@
 /**
  * db.js — camada de dados compartilhada (IndexedDB)
- * Banco: "financeiro" v2
- * Stores: "transacoes" | "contas"
+ * Banco: "financeiro" v3
+ * Stores: "transacoes" | "contas" | "categorias" | "config"
+ *
+ * SEED: os dados padrão são inseridos UMA ÚNICA VEZ no onupgradeneeded,
+ * dentro da mesma transação de upgrade. Nunca são inseridos automaticamente
+ * em nenhuma outra situação — nem ao navegar entre páginas, nem ao reabrir.
  */
 
 const DB_NAME    = 'financeiro';
-const DB_VERSION = 3;          // v3: adiciona store "categorias"
+const DB_VERSION = 4;  // v4: seed no upgrade, adiciona store "config"
 const STORE        = 'transacoes';
 const STORE_CONTAS = 'contas';
 const STORE_CATS   = 'categorias';
+const STORE_CONFIG = 'config';
 
-// Categorias padrão
+// ── DADOS PADRÃO ──────────────────────────────────────────────────────────
+
 const CATS_PADRAO = [
-  // Saída
-  { nome: 'Casa',         mov: 'saida',   cor: '#6c63ff' },
-  { nome: 'Mercado',      mov: 'saida',   cor: '#22c55e' },
-  { nome: 'Restaurante',  mov: 'saida',   cor: '#ef4444' },
-  { nome: 'Lazer',        mov: 'saida',   cor: '#f59e0b' },
-  { nome: 'Saúde',        mov: 'saida',   cor: '#38bdf8' },
-  { nome: 'Roupa',        mov: 'saida',   cor: '#06b6d4' },
-  { nome: 'Carro',        mov: 'saida',   cor: '#64748b' },
-  { nome: 'Padaria',      mov: 'saida',   cor: '#84cc16' },
-  { nome: 'Silvia',       mov: 'saida',   cor: '#f472b6' },
-  { nome: 'Letícia',      mov: 'saida',   cor: '#a78bfa' },
-  { nome: 'Silvana',      mov: 'saida',   cor: '#fb923c' },
-  { nome: 'Aventureiros', mov: 'saida',   cor: '#f97316' },
-  { nome: 'Escola',       mov: 'saida',   cor: '#0ea5e9' },
-  { nome: 'Festa',        mov: 'saida',   cor: '#ec4899' },
-  { nome: 'Outros',       mov: 'saida',   cor: '#94a3b8' },
-  // Entrada
-  { nome: 'Salário',      mov: 'entrada', cor: '#22c55e' },
-  { nome: 'Aluguel',      mov: 'entrada', cor: '#34d399' },
-  { nome: 'Repasse',      mov: 'entrada', cor: '#6ee7b7' },
-  { nome: 'Cartão Silvia',mov: 'entrada', cor: '#f472b6' },
-  { nome: 'Letícia',      mov: 'entrada', cor: '#a78bfa' },
-  { nome: 'Silvana',      mov: 'entrada', cor: '#fb923c' },
-  { nome: 'Férias',       mov: 'entrada', cor: '#fbbf24' },
-  { nome: 'Empréstimo',   mov: 'entrada', cor: '#94a3b8' },
-  { nome: 'Outros',       mov: 'entrada', cor: '#64748b' },
+  { nome: 'Casa',          mov: 'saida',   cor: '#6c63ff' },
+  { nome: 'Mercado',       mov: 'saida',   cor: '#22c55e' },
+  { nome: 'Restaurante',   mov: 'saida',   cor: '#ef4444' },
+  { nome: 'Lazer',         mov: 'saida',   cor: '#f59e0b' },
+  { nome: 'Saúde',         mov: 'saida',   cor: '#38bdf8' },
+  { nome: 'Roupa',         mov: 'saida',   cor: '#06b6d4' },
+  { nome: 'Carro',         mov: 'saida',   cor: '#64748b' },
+  { nome: 'Padaria',       mov: 'saida',   cor: '#84cc16' },
+  { nome: 'Silvia',        mov: 'saida',   cor: '#f472b6' },
+  { nome: 'Letícia',       mov: 'saida',   cor: '#a78bfa' },
+  { nome: 'Silvana',       mov: 'saida',   cor: '#fb923c' },
+  { nome: 'Aventureiros',  mov: 'saida',   cor: '#f97316' },
+  { nome: 'Escola',        mov: 'saida',   cor: '#0ea5e9' },
+  { nome: 'Festa',         mov: 'saida',   cor: '#ec4899' },
+  { nome: 'Outros',        mov: 'saida',   cor: '#94a3b8' },
+  { nome: 'Salário',       mov: 'entrada', cor: '#22c55e' },
+  { nome: 'Aluguel',       mov: 'entrada', cor: '#34d399' },
+  { nome: 'Repasse',       mov: 'entrada', cor: '#6ee7b7' },
+  { nome: 'Cartão Silvia', mov: 'entrada', cor: '#f472b6' },
+  { nome: 'Letícia',       mov: 'entrada', cor: '#a78bfa' },
+  { nome: 'Silvana',       mov: 'entrada', cor: '#fb923c' },
+  { nome: 'Férias',        mov: 'entrada', cor: '#fbbf24' },
+  { nome: 'Empréstimo',    mov: 'entrada', cor: '#94a3b8' },
+  { nome: 'Outros',        mov: 'entrada', cor: '#64748b' },
 ];
+
 const CONTAS_PADRAO = [
-  { nome: 'Bradesco',  tipo: 'cartao',    cor: '#6c63ff' },
-  { nome: 'Nubank',    tipo: 'cartao',    cor: '#f472b6' },
-  { nome: 'Itaú',      tipo: 'cartao',    cor: '#f59e0b' },
-  { nome: 'Carteira',  tipo: 'carteira',  cor: '#22c55e' },
-  { nome: 'Fixo',      tipo: 'conta',     cor: '#94a3b8' },
+  { nome: 'Bradesco', tipo: 'cartao',   cor: '#6c63ff' },
+  { nome: 'Nubank',   tipo: 'cartao',   cor: '#f472b6' },
+  { nome: 'Itaú',     tipo: 'cartao',   cor: '#f59e0b' },
+  { nome: 'Carteira', tipo: 'carteira', cor: '#22c55e' },
+  { nome: 'Fixo',     tipo: 'conta',    cor: '#94a3b8' },
 ];
+
+// ── ABRIR BANCO ───────────────────────────────────────────────────────────
 
 function abrirDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = e => {
-      const db      = e.target.result;
-      const oldVer  = e.oldVersion;
+      const db     = e.target.result;
+      const oldVer = e.oldVersion;
+      const tx     = e.target.transaction; // transação de upgrade
 
-      // Store de transações (v1)
+      // Store transações (v1)
       if (!db.objectStoreNames.contains(STORE)) {
-        const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('mesIdx', 'mesIdx', { unique: false });
-        store.createIndex('cartao', 'cartao', { unique: false });
-        store.createIndex('tipo',   'tipo',   { unique: false });
+        const s = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        s.createIndex('mesIdx', 'mesIdx', { unique: false });
+        s.createIndex('cartao', 'cartao', { unique: false });
+        s.createIndex('tipo',   'tipo',   { unique: false });
       }
 
-      // Store de contas (v2)
+      // Store contas (v2) — semeia padrões na criação
       if (!db.objectStoreNames.contains(STORE_CONTAS)) {
-        db.createObjectStore(STORE_CONTAS, { keyPath: 'id', autoIncrement: true });
+        const sc = db.createObjectStore(STORE_CONTAS, { keyPath: 'id', autoIncrement: true });
+        CONTAS_PADRAO.forEach(c => sc.add(c));
       }
 
-      // Store de categorias (v3)
+      // Store categorias (v3) — semeia padrões na criação
       if (!db.objectStoreNames.contains(STORE_CATS)) {
-        db.createObjectStore(STORE_CATS, { keyPath: 'id', autoIncrement: true });
+        const sk = db.createObjectStore(STORE_CATS, { keyPath: 'id', autoIncrement: true });
+        CATS_PADRAO.forEach(c => sk.add(c));
+      }
+
+      // Store config (v4) — chave/valor para flags internas
+      if (!db.objectStoreNames.contains(STORE_CONFIG)) {
+        db.createObjectStore(STORE_CONFIG, { keyPath: 'chave' });
       }
     };
 
-    req.onsuccess = async e => {
-      const db = e.target.result;
-      // Popula contas padrão se o store estiver vazio
-      const contas = await _getAll(db, STORE_CONTAS);
-      if (contas.length === 0) {
-        for (const c of CONTAS_PADRAO) await _add(db, STORE_CONTAS, c);
-      }
-      // Popula categorias padrão se o store estiver vazio
-      const cats = await _getAll(db, STORE_CATS);
-      if (cats.length === 0) {
-        for (const c of CATS_PADRAO) await _add(db, STORE_CATS, c);
-      }
-      resolve(db);
-    };
-
-    req.onerror = e => reject(e.target.error);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
   });
 }
 
-// ── helpers internos (recebem db já aberto) ───────────────────────────────
+// ── HELPERS INTERNOS ─────────────────────────────────────────────────────
 
 function _getAll(db, store) {
   return new Promise((resolve, reject) => {
@@ -145,14 +146,34 @@ async function dbDelete(id) {
   });
 }
 
-async function dbClear() {
+// ── LIMPAR / RESTAURAR ────────────────────────────────────────────────────
+
+// Apaga absolutamente tudo — transações, contas e categorias
+async function limparTudo() {
   const db = await abrirDB();
-  return new Promise((resolve, reject) => {
-    const tx  = db.transaction(STORE, 'readwrite');
-    const req = tx.objectStore(STORE).clear();
-    req.onsuccess = () => resolve();
-    req.onerror   = e => reject(e.target.error);
-  });
+  for (const store of [STORE, STORE_CONTAS, STORE_CATS]) {
+    await new Promise((resolve, reject) => {
+      const tx  = db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).clear();
+      req.onsuccess = () => resolve();
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+}
+
+// Substitui contas e categorias pelos valores padrão
+async function restaurarPadroes() {
+  const db = await abrirDB();
+  for (const store of [STORE_CONTAS, STORE_CATS]) {
+    await new Promise((resolve, reject) => {
+      const tx  = db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).clear();
+      req.onsuccess = () => resolve();
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+  for (const c of CONTAS_PADRAO) await _add(db, STORE_CONTAS, c);
+  for (const c of CATS_PADRAO)   await _add(db, STORE_CATS, c);
 }
 
 // ── CRUD CONTAS ───────────────────────────────────────────────────────────
@@ -240,10 +261,10 @@ async function importarJSON(arquivo) {
     const reader = new FileReader();
     reader.onload = async e => {
       try {
-        const raw = JSON.parse(e.target.result);
-        const transacoes  = Array.isArray(raw) ? raw : (raw.transacoes  || []);
-        const contas      = Array.isArray(raw) ? []  : (raw.contas      || []);
-        const categorias  = Array.isArray(raw) ? []  : (raw.categorias  || []);
+        const raw        = JSON.parse(e.target.result);
+        const transacoes = Array.isArray(raw) ? raw : (raw.transacoes  || []);
+        const contas     = Array.isArray(raw) ? []  : (raw.contas      || []);
+        const categorias = Array.isArray(raw) ? []  : (raw.categorias  || []);
 
         for (const t of transacoes)  { const { id, ...s } = t; await dbAdd(s); }
         for (const c of contas)      { const { id, ...s } = c; await contasAdd(s); }

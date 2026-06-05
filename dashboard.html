@@ -53,7 +53,7 @@
 </head>
 <body>
 <nav>
-  <div class="brand">💰 Financeiro <span>Fácil</span></div>
+  <div class="brand"><img src="icon.png" style="height:32px;width:32px;object-fit:contain;vertical-align:middle;margin-right:.4rem;border-radius:6px"> Financeiro <span>Fácil</span></div>
   <a href="index.html">Lançamentos</a>
   <a href="dashboard.html" class="active">Dashboard</a>
   <a href="config.html">Configurações</a>
@@ -271,7 +271,7 @@ function renderCards(semCarteira, mesIdx, anoFiltro) {
   document.getElementById('cardSaidas').textContent      = fmt(saidas);
   document.getElementById('cardSaidasSub').textContent   = label;
   const saldoEl = document.getElementById('cardSaldo');
-  saldoEl.textContent = fmt(saldo);
+  saldoEl.textContent = fmt(Math.abs(saldo));
   saldoEl.className   = 'value ' + (saldo >= 0 ? 'positive' : 'negative');
 
   // Por conta (sem Carteira, so mes/ano)
@@ -335,7 +335,7 @@ function calcularCarteira(mesIdx, anoFiltro) {
 
   const el  = document.getElementById('cardCarteira');
   const sub = document.getElementById('cardCarteiraSub');
-  el.textContent  = fmt(saldoAcum);
+  el.textContent  = fmt(Math.abs(saldoAcum));
   el.className    = 'value ' + (saldoAcum >= 0 ? 'positive' : 'negative');
   sub.textContent = 'ate ' + MESES_PT[mesLimite] + (ano ? '/' + ano : '');
 }
