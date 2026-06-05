@@ -19,22 +19,26 @@
       "index.html",
       "dashboard.html",
       "config.html",
-      "db.js"
+      "db.js",
+      "icon.png",
+      "icon.ico"
     ],
     "win": {
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "icon.png"
+      "icon": "icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "icon.png",
-      "uninstallerIcon": "icon.png",
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
       "installerHeaderIcon": "icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
@@ -43,6 +47,8 @@
   },
   "devDependencies": {
     "electron": "^31.0.0",
-    "electron-builder": "^24.0.0"
+    "electron-builder": "^24.0.0",
+    "jimp": "^0.22.12",
+    "png-to-ico": "^3.0.1"
   }
 }
