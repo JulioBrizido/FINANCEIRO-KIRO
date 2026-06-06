@@ -90,18 +90,8 @@
         <span class="sub">entradas - saidas</span>
       </div>
       <div class="card">
-        <span class="label">Bradesco</span>
-        <span class="value accent" id="cardBradesco">R$ 0,00</span>
-        <span class="sub">fatura do mes</span>
-      </div>
-      <div class="card">
-        <span class="label">Nubank</span>
-        <span class="value accent" id="cardNubank">R$ 0,00</span>
-        <span class="sub">fatura do mes</span>
-      </div>
-      <div class="card">
-        <span class="label">Itau</span>
-        <span class="value accent" id="cardItau">R$ 0,00</span>
+        <span class="label">Cartões</span>
+        <span class="value accent" id="cardCartoes">R$ 0,00</span>
         <span class="sub">fatura do mes</span>
       </div>
       <div class="card">
@@ -121,24 +111,24 @@
         <div class="chart-wrap"><canvas id="chartDonut"></canvas></div>
       </div>
       <div class="chart-card">
-        <h3>Total por Conta - Mes Selecionado</h3>
+        <h3>Total por Cartão no Período</h3>
         <div class="chart-wrap"><canvas id="chartCartoes"></canvas></div>
       </div>
     </div>
     <div class="charts-grid full">
       <div class="chart-card">
-        <h3>Evolucao Mensal por Conta (Saidas)</h3>
+        <h3>Evolução Mensal por Cartão</h3>
         <div class="chart-wrap tall"><canvas id="chartLinhas"></canvas></div>
       </div>
     </div>
     <div class="charts-grid full">
       <div class="chart-card">
-        <h3>Entradas vs Saidas por Mes</h3>
+        <h3>Entradas vs Saídas por Mês</h3>
         <div class="chart-wrap tall"><canvas id="chartSaldo"></canvas></div>
       </div>
     </div>
     <div class="table-card">
-      <h3>Transacoes do Periodo</h3>
+      <h3>Lançamentos</h3>
       <table>
         <thead>
           <tr>
@@ -279,12 +269,12 @@ function renderCards(semCarteira, mesIdx, anoFiltro) {
   if (mesIdx    !== -1) base = base.filter(t => t.mesIdx === mesIdx);
   if (anoFiltro !== -1) base = base.filter(t => (t.ano||0) === anoFiltro);
 
-  const idMap = { 'Bradesco':'cardBradesco', 'Nubank':'cardNubank', 'Itau':'cardItau', 'Ita\u00fa':'cardItau' };
-  CARTOES.forEach(nome => {
-    const el = document.getElementById(idMap[nome]);
-    if (!el) return;
-    el.textContent = fmt(base.filter(t => t.cartao === nome).reduce((s,t) => s + t.valor, 0));
-  });
+  // Total cartões (todos os cartões, excluindo Carteira e Conta)
+  const totalCartoes = base.filter(t => {
+    const conta = _contas.find(c => c.nome === t.cartao);
+    return conta && conta.tipo === 'cartao';
+  }).reduce((s,t) => s + t.valor, 0);
+  document.getElementById('cardCartoes').textContent = fmt(totalCartoes);
 
   // Maior categoria (saidas, sem Carteira)
   const porTipo = {};
@@ -485,8 +475,12 @@ function renderSaldo(anoFiltro) {
 function renderTabela(filtrado) {
   const tbody  = document.getElementById('tabelaBody');
   const sorted = [...filtrado].sort((a,b) => {
-    if ((b.ano||0) !== (a.ano||0)) return (b.ano||0) - (a.ano||0);
-    return b.mesIdx - a.mesIdx;
+    const movA = a.mov || 'saida';
+    const movB = b.mov || 'saida';
+    // Entradas primeiro, depois saídas
+    if (movA !== movB) return movA === 'entrada' ? -1 : 1;
+    // Dentro do mesmo tipo: maior valor primeiro
+    return b.valor - a.valor;
   }).slice(0, 100);
 
   tbody.innerHTML = sorted.map(t => {

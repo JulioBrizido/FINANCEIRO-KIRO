@@ -258,22 +258,18 @@ const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 
-const CORES_SAIDA = {
-  'Casa':'#6c63ff','Silvia':'#f472b6','Lazer':'#f59e0b','Roupa':'#06b6d4',
-  'Letícia':'#a78bfa','Silvana':'#fb923c','Mercado':'#22c55e',
-  'Restaurante':'#ef4444','Saúde':'#38bdf8','Padaria':'#84cc16',
-  'Carro':'#64748b','Aventureiros':'#f97316','Escola':'#0ea5e9',
-  'Festa':'#ec4899','Outros':'#94a3b8',
-};
-const CORES_ENTRADA = {
-  'Salário':'#22c55e','Aluguel':'#34d399','Repasse':'#6ee7b7',
-  'Cartão Silvia':'#f472b6','Letícia':'#a78bfa','Silvana':'#fb923c',
-  'Férias':'#fbbf24','Empréstimo':'#94a3b8','Outros':'#64748b',
-};
+// ── CATEGORIAS DINÂMICAS (cores do banco) ────────────────────────────────
+
+let _cats = []; // cache de categorias
+
+async function carregarCats() {
+  _cats = await catsGetAll();
+}
 
 function corTipo(tipo, mov) {
-  const mapa = (mov === 'entrada') ? CORES_ENTRADA : CORES_SAIDA;
-  return mapa[tipo] || '#94a3b8';
+  const cat = _cats.find(c => c.nome === tipo && c.mov === mov)
+           || _cats.find(c => c.nome === tipo);
+  return cat ? cat.cor : '#94a3b8';
 }
 
 let editandoId = null;
@@ -457,6 +453,7 @@ function confirmarLimpar() {
       await limparTudo();
       toast('Dados apagados.');
       await carregarContas();
+      await carregarCats();
       preencherFiltroTipo();
       await renderTabela();
     });
@@ -468,6 +465,7 @@ function fmt(v) {
 }
 
 async function renderTabela() {
+  await carregarCats(); // garante cores atualizadas do banco
   const todos   = await dbGetAll();
   const movF    = document.getElementById('filtroMov').value;
   const mesF    = parseInt(document.getElementById('filtroMes').value);
@@ -799,6 +797,7 @@ async function handleImport(e) {
     const n = await importarJSON(file);
     toast(`${n.transacoes} lançamentos, ${n.contas} contas e ${n.categorias} categorias importados!`);
     await carregarContas();
+    await carregarCats();
     preencherFiltroTipo();
     await renderTabela();
   }
@@ -877,7 +876,8 @@ for (let a = anoAtual + 1; a >= anoAtual - 3; a--) {
 document.getElementById('fMes').value      = mesAtual;
 document.getElementById('filtroMes').value = mesAtual;
 document.getElementById('filtroAno').value = anoAtual;
-carregarContas().then(() => {
+carregarContas().then(async () => {
+  await carregarCats();
   preencherFiltroTipo();
   setMov('saida');
   renderTabela();
