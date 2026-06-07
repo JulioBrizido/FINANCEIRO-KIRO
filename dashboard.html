@@ -15,6 +15,7 @@
     nav a{color:var(--muted);text-decoration:none;padding:1rem 1.25rem;font-size:.9rem;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
     nav a:hover{color:var(--text)}
     nav a.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .nav-version{margin-left:auto;font-size:.75rem;color:var(--muted);padding:.3rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:20px;white-space:nowrap}
     .filter-bar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.75rem 2rem;background:var(--surface);border-bottom:1px solid var(--border)}
     .filter-bar label{color:var(--muted);font-size:.85rem}
     select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.4rem .8rem;font-size:.9rem;cursor:pointer;outline:none}
@@ -57,6 +58,7 @@
   <a href="index.html">Lançamentos</a>
   <a href="dashboard.html" class="active">Dashboard</a>
   <a href="config.html">Configurações</a>
+  <span class="nav-version">v1.0.9</span>
 </nav>
 <div class="filter-bar">
   <label for="mesSelect">Mes:</label>
@@ -151,13 +153,17 @@ const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 
 const CARTOES = [];
 let _contas = [];
-const TIPO_CORES = {
-  'Casa':'#6c63ff','Silvia':'#f472b6','Lazer':'#f59e0b','Roupa':'#06b6d4',
-  'Leticia':'#a78bfa','Silvana':'#fb923c','Mercado':'#22c55e',
-  'Restaurante':'#ef4444','Saude':'#38bdf8','Padaria':'#84cc16',
-  'Carro':'#64748b','Aventureiros':'#f97316','Escola':'#0ea5e9',
-  'Festa':'#ec4899','Outros':'#94a3b8',
-};
+let _cats = []; // cache de categorias
+
+async function carregarCats() {
+  _cats = await catsGetAll();
+}
+
+function corTipo(tipo, mov) {
+  const cat = _cats.find(c => c.nome === tipo && c.mov === mov)
+           || _cats.find(c => c.nome === tipo);
+  return cat ? cat.cor : '#94a3b8';
+}
 
 let allTransacoes = [];
 let charts = {};
@@ -168,6 +174,7 @@ function fmt(v) {
 
 async function init() {
   _contas = await contasGetAll();
+  await carregarCats();
   const cartaoSel = document.getElementById('cartaoSelect');
   cartaoSel.innerHTML = '<option value="todos">Todos</option>' +
     _contas.map(c => '<option value="' + c.nome + '">' + c.nome + '</option>').join('');
@@ -337,7 +344,7 @@ function renderDonut(semCarteira) {
   const sorted = Object.entries(porTipo).sort((a,b) => b[1] - a[1]);
   const labels = sorted.map(e => e[0]);
   const data   = sorted.map(e => e[1]);
-  const colors = labels.map(l => TIPO_CORES[l] || '#94a3b8');
+  const colors = labels.map(l => corTipo(l, 'saida'));
 
   if (charts.donut) charts.donut.destroy();
   charts.donut = new Chart(document.getElementById('chartDonut'), {
@@ -484,7 +491,7 @@ function renderTabela(filtrado) {
   }).slice(0, 100);
 
   tbody.innerHTML = sorted.map(t => {
-    const cor  = TIPO_CORES[t.tipo] || '#94a3b8';
+    const cor  = corTipo(t.tipo, t.mov || 'saida');
     const mov  = t.mov || 'saida';
     const icon = mov === 'entrada' ? 'E' : 'S';
     const vc   = mov === 'entrada' ? '#22c55e' : '#ef4444';
