@@ -332,11 +332,27 @@ function preencherCats(mov, valorAtual) {
 }
 
 function preencherFiltroTipo() {
+  const movF = document.getElementById('filtroMov').value;
   catsGetAll().then(todas => {
-    const sorted = [...todas].sort((a, b) => a.nome.localeCompare(b.nome));
+    // Filtra categorias pelo movimento selecionado (se não for "todos")
+    const filtradas = movF === 'todos'
+      ? todas
+      : todas.filter(c => c.mov === movF);
+    const sorted = [...filtradas].sort((a, b) => a.nome.localeCompare(b.nome));
     const sel = document.getElementById('filtroTipo');
+    const valorAtual = sel.value;
+    // value = "mov|nome" para diferenciar categorias de mesmo nome entre saída e entrada
     sel.innerHTML = '<option value="todos">Todas</option>' +
-      sorted.map(c => '<option>' + c.nome + '</option>').join('');
+      sorted.map(c =>
+        '<option value="' + c.mov + '|' + c.nome + '">' +
+          (movF === 'todos' ? (c.mov === 'entrada' ? '📥 ' : '📤 ') : '') +
+          c.nome +
+        '</option>'
+      ).join('');
+    // Tenta restaurar a seleção anterior se ainda existir
+    if ([...sel.options].some(o => o.value === valorAtual)) {
+      sel.value = valorAtual;
+    }
   });
 }
 
