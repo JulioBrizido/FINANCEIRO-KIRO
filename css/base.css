@@ -1,0 +1,61 @@
+/* base.css — variáveis, reset e estilos compartilhados entre todas as páginas */
+
+:root {
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--accent:#6c63ff;
+  --green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--text:#e2e8f0;
+  --muted:#94a3b8;--border:#2d3148;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
+
+/* ── NAV ── */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center}
+nav .brand{font-size:1.2rem;font-weight:700;padding:1rem 1.5rem 1rem 0;color:var(--text)}
+nav .brand span{color:var(--accent)}
+nav a{color:var(--muted);text-decoration:none;padding:1rem 1.25rem;font-size:.9rem;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+nav a:hover{color:var(--text)}
+nav a.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-version{margin-left:auto;font-size:.75rem;color:var(--muted);padding:.3rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:20px;white-space:nowrap}
+
+/* ── BOTÕES ── */
+.btn{padding:.55rem 1.4rem;border-radius:8px;border:none;font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .2s,transform .1s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-icon{background:none;border:none;cursor:pointer;font-size:1rem;padding:.2rem .4rem;border-radius:6px;transition:background .2s}
+.btn-icon:hover{background:var(--surface2)}
+
+/* ── FORM GROUP ── */
+.form-group{display:flex;flex-direction:column;gap:.4rem}
+.form-group label{font-size:.8rem;color:var(--muted)}
+.form-group input,.form-group select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.55rem .85rem;font-size:.95rem;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.75rem 2rem;width:100%;max-width:520px;transform:translateY(20px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal h2{font-size:1rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1.25rem}
+.modal p{color:var(--muted);margin-bottom:1.5rem;font-size:.95rem;line-height:1.5}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--green);color:#fff;padding:.7rem 1.4rem;border-radius:10px;font-size:.9rem;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999}
+#toast.show{opacity:1}
+#toast.error{background:var(--red)}
+
+/* ── TABLE ── */
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{color:var(--muted);font-weight:600;text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:.5rem .75rem;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:.75rem;font-weight:600}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:.95rem}
+.empty-state .icon{font-size:2.5rem;margin-bottom:.5rem}

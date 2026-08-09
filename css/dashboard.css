@@ -1,0 +1,35 @@
+/* dashboard.css — estilos específicos do Dashboard */
+
+.filter-bar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.75rem 2rem;background:var(--surface);border-bottom:1px solid var(--border)}
+.filter-bar label{color:var(--muted);font-size:.85rem}
+select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.4rem .8rem;font-size:.9rem;cursor:pointer;outline:none}
+select:focus{border-color:var(--accent)}
+
+.main{padding:1.5rem 2rem;max-width:1400px;margin:0 auto}
+
+#emptyState{display:none;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:1rem;color:var(--muted);text-align:center}
+#emptyState .icon{font-size:3rem}
+#emptyState a{color:var(--accent);text-decoration:none;font-weight:600;border:1px solid var(--accent);padding:.5rem 1.25rem;border-radius:8px;margin-top:.5rem;transition:background .2s}
+#emptyState a:hover{background:var(--accent);color:#fff}
+#dashboard{display:none}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:.4rem}
+.card .label{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.card .value{font-size:1.6rem;font-weight:700}
+.card .value.positive{color:var(--green)}
+.card .value.negative{color:var(--red)}
+.card .value.neutral{color:var(--text)}
+.card .value.accent{color:var(--accent)}
+.card .sub{font-size:.78rem;color:var(--muted)}
+
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.charts-grid.full{grid-template-columns:1fr}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem}
+.chart-card h3{font-size:.9rem;color:var(--muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:.05em}
+.chart-wrap{position:relative;height:280px}
+.chart-wrap.tall{height:320px}
+
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1rem;overflow-x:auto}
+.table-card h3{font-size:.9rem;color:var(--muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:.05em}
