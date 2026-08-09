@@ -89,7 +89,7 @@
   <a href="index.html">Lançamentos</a>
   <a href="dashboard.html">Dashboard</a>
   <a href="config.html" class="active">Configurações</a>
-  <span class="nav-version">v1.0.9</span>
+  <span class="nav-version" id="navVersion">v2.0.0</span>
 </nav>
 
   <div class="main">
@@ -445,6 +445,10 @@ function confirmarRestaurarPadroes() {
 
 renderLista();
 renderCats();
+</script>
+<script>
+  const vEl = document.getElementById('navVersion');
+  if (vEl) vEl.textContent = 'v' + (window.appVersion || '2.0.0');
 </script>
 </body>
 </html>

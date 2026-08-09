@@ -58,7 +58,7 @@
   <a href="index.html">Lançamentos</a>
   <a href="dashboard.html" class="active">Dashboard</a>
   <a href="config.html">Configurações</a>
-  <span class="nav-version">v1.0.9</span>
+  <span class="nav-version" id="navVersion">v2.0.0</span>
 </nav>
 <div class="filter-bar">
   <label for="mesSelect">Mes:</label>
@@ -509,6 +509,10 @@ function renderTabela(filtrado) {
 }
 
 init();
+</script>
+<script>
+  const vEl = document.getElementById('navVersion');
+  if (vEl) vEl.textContent = 'v' + (window.appVersion || '2.0.0');
 </script>
 </body>
 </html>

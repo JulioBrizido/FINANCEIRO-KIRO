@@ -87,7 +87,7 @@
   <a href="index.html" class="active">Lançamentos</a>
   <a href="dashboard.html">Dashboard</a>
   <a href="config.html">Configurações</a>
-  <span class="nav-version">v1.0.9</span>
+  <span class="nav-version" id="navVersion">v2.0.0</span>
 </nav>
 <div class="main">
   <div class="form-card">
@@ -127,6 +127,10 @@
       <div class="form-group">
         <label for="fTipo">Categoria</label>
         <select id="fTipo"></select>
+      </div>
+      <div class="form-group">
+        <label for="fData">Data</label>
+        <input id="fData" type="date"/>
       </div>
       <div class="form-group">
         <label for="fVenc">Vencimento (dia)</label>
@@ -201,7 +205,8 @@
           <th><input type="checkbox" id="chkTodos" title="Selecionar todos" onchange="toggleTodos(this.checked)"/></th>
           <th>Mov.</th><th>Conta</th><th>Ano</th><th>Mês</th><th>Descrição</th>
           <th>Categoria</th><th>Venc</th>
-          <th style="text-align:right">Valor</th>
+          <th id="thData" style="cursor:pointer;white-space:nowrap" onclick="toggleOrdem('data')" title="Ordenar por data">Data <span id="iconData"></span></th>
+          <th id="thValor" style="text-align:right;cursor:pointer;white-space:nowrap" onclick="toggleOrdem('valor')" title="Ordenar por valor">Valor <span id="iconValor">▼</span></th>
           <th style="text-align:center">Ações</th>
         </tr>
       </thead>
@@ -369,6 +374,7 @@ function limparForm(manterContexto = false) {
   document.getElementById('fDesc').value  = '';
   document.getElementById('fValor').value = '';
   document.getElementById('fVenc').value  = '';
+  document.getElementById('fData').value  = '';
   document.getElementById('fParc').value  = '1';
   document.getElementById('btnCancelar').style.display = 'none';
   document.getElementById('grupoParc').style.display   = 'flex';
@@ -402,6 +408,7 @@ async function salvarLancamento() {
   const desc   = document.getElementById('fDesc').value.trim();
   const tipo   = document.getElementById('fTipo').value;
   const venc   = document.getElementById('fVenc').value.trim();
+  const data   = document.getElementById('fData').value;
   const valor  = parseFloat(document.getElementById('fValor').value);
   const parc   = parseInt(document.getElementById('fParc').value) || 1;
 
@@ -410,7 +417,7 @@ async function salvarLancamento() {
 
   if (editandoId !== null) {
     await dbUpdate({ id: editandoId, mov, cartao, ano, mesIdx, mes: MESES_PT[mesIdx],
-                     descricao: desc, tipo, venc, valor });
+                     descricao: desc, tipo, venc, data, valor });
     toast('Lançamento atualizado!');
     limparForm();
     await renderTabela();
@@ -419,7 +426,7 @@ async function salvarLancamento() {
 
   if (parc <= 1 || mov === 'entrada') {
     await dbAdd({ mov, cartao, ano, mesIdx, mes: MESES_PT[mesIdx],
-                  descricao: desc, tipo, venc, valor });
+                  descricao: desc, tipo, venc, data, valor });
     toast('Lançamento salvo!');
   } else {
     const vp = Math.round((valor / parc) * 100) / 100;
@@ -429,7 +436,7 @@ async function salvarLancamento() {
       const avancoAno = Math.floor((mesIdx + i) / 12);
       await dbAdd({ mov, cartao, ano: ano + avancoAno, mesIdx: mi, mes: MESES_PT[mi],
                     descricao: desc + ' (' + (i+1) + '/' + parc + ')',
-                    tipo, venc, valor: vp });
+                    tipo, venc, data, valor: vp });
     }
     toast('✅ ' + parc + ' parcelas lançadas (' + fmt(vp) + '/mês)');
   }
@@ -452,6 +459,7 @@ async function editarLancamento(id) {
   document.getElementById('fAno').value    = t.ano || new Date().getFullYear();
   document.getElementById('fDesc').value   = t.descricao;
   document.getElementById('fVenc').value   = t.venc || '';
+  document.getElementById('fData').value   = t.data || '';
   document.getElementById('fValor').value  = t.valor;
   document.getElementById('btnCancelar').style.display = 'inline-block';
   document.getElementById('grupoParc').style.display   = 'none';
@@ -518,10 +526,14 @@ async function renderTabela() {
   lista.sort((a, b) => {
     const ma = a.mov||'saida', mb = b.mov||'saida';
     if (ma !== mb) return ma === 'entrada' ? -1 : 1;
-    // Ordena por ano desc, depois mês desc, depois valor desc
+    if (ordemCampo === 'data') {
+      const da = a.data || '', db2 = b.data || '';
+      if (da !== db2) return ordemDir === 'desc' ? db2.localeCompare(da) : da.localeCompare(db2);
+    }
+    // Fallback: ano desc, mês desc, valor desc
     if ((b.ano||0) !== (a.ano||0)) return (b.ano||0) - (a.ano||0);
     if (b.mesIdx !== a.mesIdx) return b.mesIdx - a.mesIdx;
-    return b.valor - a.valor;
+    return ordemDir === 'desc' ? b.valor - a.valor : a.valor - b.valor;
   });
 
   const entradas = lista.filter(t => t.mov === 'entrada').reduce((s,t)=>s+t.valor,0);
@@ -544,6 +556,7 @@ async function renderTabela() {
     const cor = corTipo(t.tipo, mov);
     const icon = mov === 'entrada' ? '📥' : '📤';
     const vc   = mov === 'entrada' ? 'var(--green)' : 'var(--red)';
+    const dataFmt = t.data ? t.data.split('-').reverse().join('/') : '—';
     return '<tr data-id="' + t.id + '" data-mov="' + mov + '">' +
       '<td><input type="checkbox" class="chk-linha" data-id="' + t.id + '" onchange="onCheckLinha()"/></td>' +
       '<td style="font-size:1rem">' + icon + '</td>' +
@@ -553,6 +566,7 @@ async function renderTabela() {
       '<td>' + t.descricao + '</td>' +
       '<td><span class="badge" style="background:' + cor + '22;color:' + cor + '">' + t.tipo + '</span></td>' +
       '<td>' + (t.venc||'—') + '</td>' +
+      '<td style="color:var(--muted);white-space:nowrap">' + dataFmt + '</td>' +
       '<td style="text-align:right;font-weight:600;color:' + vc + '">' + fmt(t.valor) + '</td>' +
       '<td style="text-align:center;white-space:nowrap">' +
         '<button class="btn-icon" onclick="editarLancamento(' + t.id + ')">✏️</button>' +
@@ -866,6 +880,29 @@ function atualizarPreviewParc() {
 ['fParc','fValor','fMes','fAno'].forEach(id =>
   document.getElementById(id).addEventListener('input', atualizarPreviewParc));
 
+// ── ORDENAÇÃO ────────────────────────────────────────────────────────────
+let ordemCampo = 'valor'; // 'valor' ou 'data'
+let ordemDir   = 'desc';  // 'asc' ou 'desc'
+
+function toggleOrdem(campo) {
+  if (ordemCampo === campo) {
+    ordemDir = ordemDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    ordemCampo = campo;
+    ordemDir   = 'desc';
+  }
+  atualizarIconesOrdem();
+  renderTabela();
+}
+
+function atualizarIconesOrdem() {
+  const seta = ordemDir === 'desc' ? '▼' : '▲';
+  document.getElementById('iconData').textContent  = ordemCampo === 'data'  ? seta : '';
+  document.getElementById('iconValor').textContent = ordemCampo === 'valor' ? seta : '';
+  document.getElementById('thData').style.color  = ordemCampo === 'data'  ? 'var(--accent)' : '';
+  document.getElementById('thValor').style.color = ordemCampo === 'valor' ? 'var(--accent)' : '';
+}
+
 // ── FILTROS ───────────────────────────────────────────────────────────────
 ['filtroMov','filtroMes','filtroAno','filtroCartao','filtroTipo','filtroBusca'].forEach(id => {
   document.getElementById(id).addEventListener('change', renderTabela);
@@ -902,6 +939,7 @@ document.getElementById('filtroAno').value = anoAtual;
 carregarContas().then(async () => {
   await carregarCats();
   preencherFiltroTipo();
+  atualizarIconesOrdem();
   setMov('saida');
   renderTabela();
 });
@@ -918,6 +956,10 @@ document.querySelector('nav a[href="index.html"]').addEventListener('click', fun
   preencherFiltroTipo();
   renderTabela();
 });
+</script>
+<script>
+  const vEl = document.getElementById('navVersion');
+  if (vEl) vEl.textContent = 'v' + (window.appVersion || '2.0.0');
 </script>
 </body>
 </html>
