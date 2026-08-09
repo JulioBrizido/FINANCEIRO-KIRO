@@ -1,12 +1,14 @@
 {
   "name": "financeiro-facil",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Sistema de controle financeiro pessoal",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win portable",
-    "dist-installer": "electron-builder --win nsis"
+    "dist-installer": "electron-builder --win nsis",
+    "test": "vitest --run",
+    "test:watch": "vitest"
   },
   "build": {
     "appId": "com.financeiro.facil",
@@ -16,12 +18,15 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "index.html",
       "dashboard.html",
       "config.html",
       "db.js",
       "icon.png",
-      "icon.ico"
+      "icon.ico",
+      "css/**/*",
+      "js/**/*"
     ],
     "win": {
       "target": [
@@ -49,6 +54,7 @@
     "electron": "^31.0.0",
     "electron-builder": "^24.0.0",
     "jimp": "^0.22.12",
-    "png-to-ico": "^3.0.1"
+    "png-to-ico": "^3.0.1",
+    "vitest": "^2.0.0"
   }
 }
