@@ -1,9 +1,10 @@
 {
   "name": "financeiro-facil",
-  "version": "2.0.1",
-  "description": "Sistema de controle financeiro pessoal",
+  "version": "3.0.0",
+  "description": "Sistema de controle financeiro pessoal (web multi-usuário)",
   "main": "main.js",
   "scripts": {
+    "web": "node server/index.js",
     "start": "electron .",
     "dist": "electron-builder --win portable",
     "dist-installer": "electron-builder --win nsis",
@@ -49,6 +50,11 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Financeiro Fácil"
     }
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.0",
+    "jsonwebtoken": "^9.0.0"
   },
   "devDependencies": {
     "electron": "^31.0.0",
