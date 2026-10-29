@@ -499,7 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Versão
   const vEl = document.getElementById('navVersion');
-  if (vEl) vEl.textContent = 'v' + (window.appVersion || '2.0.1');
+  if (vEl) vEl.textContent = 'v' + (window.appVersion || '3.0.0');
+  updateNavUser();
 
   // Inicializa
   carregarContas().then(async () => {
