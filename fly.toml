@@ -1,0 +1,25 @@
+# fly.toml — configuração de deploy para Fly.io (gratuito com volume persistente)
+# docs: https://fly.io/docs/apps/
+#
+# Como usar:
+#   1. Instale flyctl: https://fly.io/docs/flyctl/install/
+#   2. flyctl auth login
+#   3. flyctl launch --no-deploy  (na pasta do projeto)
+#   4. flyctl volumes create data --size 1   (cria volume de 1GB)
+#   5. flyctl deploy
+#   6. flyctl open   (abre no navegador)
+
+app = "financeiro-facil"
+primary_region = "gru"   # São Paulo
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+
+[mounts]
+  source = "data"
+  destination = "/app/data"

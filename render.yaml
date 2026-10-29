@@ -1,0 +1,27 @@
+# render.yaml — configuração de deploy para Render.com
+# docs: https://render.com/docs/blueprint-spec
+#
+# Como usar:
+#   1. Crie conta em render.com
+#   2. New → Blueprint → conecte o repo GitHub
+#   3. O Render detecta este arquivo e cria tudo automaticamente
+#
+# Nota: disco persistente requer plano Starter ($7/mês).
+# No plano Free o SQLite funciona enquanto o serviço roda,
+# mas os dados são perdidos a cada deploy/restart.
+
+services:
+  - type: web
+    name: financeiro-facil
+    runtime: node
+    plan: starter           # free não suporta disco persistente
+    buildCommand: npm install
+    startCommand: node server/index.js
+    healthCheckPath: /login.html
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true   # Render gera uma string aleatória segura
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
