@@ -144,7 +144,7 @@ function confirmarRestaurarPadroes() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const vEl = document.getElementById('navVersion');
-  if (vEl) vEl.textContent = 'v' + (window.appVersion || '3.0.1');
+  if (vEl) vEl.textContent = 'v' + (window.appVersion || '3.0.2');
   updateNavUser();
   renderLista();
   renderCats();

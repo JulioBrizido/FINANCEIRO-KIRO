@@ -1,6 +1,6 @@
 {
   "name": "financeiro-facil",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Sistema de controle financeiro pessoal (web multi-usuário)",
   "main": "main.js",
   "scripts": {
