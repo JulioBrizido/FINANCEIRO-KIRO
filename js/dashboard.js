@@ -5,6 +5,7 @@
 
 const CARTOES = [];
 let _contas = [];
+let carteiraNomes = new Set();
 let _cats   = [];
 let allTransacoes = [];
 let charts = {};
@@ -18,6 +19,9 @@ function corTipo(tipo, mov) {
 
 async function init() {
   _contas = await contasGetAll();
+  carteiraNomes = new Set(_contas.filter(c => c.tipo === 'carteira').map(c => c.nome));
+  const labelEl = document.getElementById('cardCarteiraLabel');
+  if (labelEl) labelEl.textContent = carteiraNomes.size > 0 ? [...carteiraNomes].join(', ') : 'Carteira';
   await carregarCats();
   const cartaoSel = document.getElementById('cartaoSelect');
   cartaoSel.innerHTML = '<option value="todos">Todos</option>' +
@@ -77,7 +81,7 @@ function renderDashboard() {
   if (anoFiltro !== -1)         filtrado = filtrado.filter(t => (t.ano||0) === anoFiltro);
   if (cartaoFiltro !== 'todos') filtrado = filtrado.filter(t => t.cartao === cartaoFiltro);
 
-  const semCarteira = filtrado.filter(t => t.cartao !== 'Carteira');
+  const semCarteira = filtrado.filter(t => !carteiraNomes.has(t.cartao));
   renderCards(semCarteira, mesIdx, anoFiltro);
   renderDonut(semCarteira);
   renderBarCartoes(mesIdx, anoFiltro);
@@ -100,7 +104,7 @@ function renderCards(semCarteira, mesIdx, anoFiltro) {
   saldoEl.textContent = fmt(Math.abs(saldo));
   saldoEl.className   = 'value ' + (saldo >= 0 ? 'positive' : 'negative');
 
-  let base = allTransacoes.filter(t => (t.mov||'saida') === 'saida' && t.cartao !== 'Carteira');
+  let base = allTransacoes.filter(t => (t.mov||'saida') === 'saida' && !carteiraNomes.has(t.cartao));
   if (mesIdx    !== -1) base = base.filter(t => t.mesIdx === mesIdx);
   if (anoFiltro !== -1) base = base.filter(t => (t.ano||0) === anoFiltro);
 
@@ -119,7 +123,7 @@ function renderCards(semCarteira, mesIdx, anoFiltro) {
 }
 
 function calcularCarteira(mesIdx, anoFiltro) {
-  const { saldo, mesLimite } = calcularSaldoCarteira(allTransacoes, mesIdx, anoFiltro);
+  const { saldo, mesLimite } = calcularSaldoCarteira(allTransacoes, mesIdx, anoFiltro, carteiraNomes);
   const ano = anoFiltro !== -1 ? anoFiltro : null;
   const el = document.getElementById('cardCarteira');
   el.textContent = fmt(Math.abs(saldo));
@@ -140,7 +144,7 @@ function renderDonut(semCarteira) {
 }
 
 function renderBarCartoes(mesIdx, anoFiltro) {
-  let base = allTransacoes.filter(t => (t.mov||'saida') === 'saida' && t.cartao !== 'Carteira');
+  let base = allTransacoes.filter(t => (t.mov||'saida') === 'saida' && !carteiraNomes.has(t.cartao));
   if (mesIdx !== -1)    base = base.filter(t => t.mesIdx === mesIdx);
   if (anoFiltro !== -1) base = base.filter(t => (t.ano||0) === anoFiltro);
   const cores = CARTOES.map(n => { const c = _contas.find(x => x.nome === n); return c ? c.cor : '#94a3b8'; });
@@ -169,11 +173,11 @@ function renderLinhas() {
 
 function renderSaldo(anoFiltro) {
   const ano = anoFiltro !== -1 ? anoFiltro : null;
-  const mesesPresentes = [...new Set(allTransacoes.filter(t => t.cartao !== 'Carteira' && (ano === null || (t.ano||0) === ano)).map(t => t.mesIdx))].sort((a,b) => a - b);
+  const mesesPresentes = [...new Set(allTransacoes.filter(t => !carteiraNomes.has(t.cartao) && (ano === null || (t.ano||0) === ano)).map(t => t.mesIdx))].sort((a,b) => a - b);
   const labels   = mesesPresentes.map(i => MESES_PT[i].substring(0, 3));
-  const entradas = mesesPresentes.map(m => allTransacoes.filter(t => t.mov === 'entrada' && t.mesIdx === m && t.cartao !== 'Carteira' && (ano === null || (t.ano||0) === ano)).reduce((s,t) => s + t.valor, 0));
-  const saidas   = mesesPresentes.map(m => allTransacoes.filter(t => (t.mov||'saida') === 'saida' && t.mesIdx === m && t.cartao !== 'Carteira' && (ano === null || (t.ano||0) === ano)).reduce((s,t) => s + t.valor, 0));
-  const lancCarteira = allTransacoes.filter(t => t.cartao === 'Carteira' && t.mesIdx === 0 && (ano === null || (t.ano||0) === ano));
+  const entradas = mesesPresentes.map(m => allTransacoes.filter(t => t.mov === 'entrada' && t.mesIdx === m && !carteiraNomes.has(t.cartao) && (ano === null || (t.ano||0) === ano)).reduce((s,t) => s + t.valor, 0));
+  const saidas   = mesesPresentes.map(m => allTransacoes.filter(t => (t.mov||'saida') === 'saida' && t.mesIdx === m && !carteiraNomes.has(t.cartao) && (ano === null || (t.ano||0) === ano)).reduce((s,t) => s + t.valor, 0));
+  const lancCarteira = allTransacoes.filter(t => carteiraNomes.has(t.cartao) && t.mesIdx === 0 && (ano === null || (t.ano||0) === ano));
   let acum = lancCarteira.reduce((s,t) => t.mov === 'entrada' ? s + t.valor : s - t.valor, 0);
   const carteira = mesesPresentes.map((m, i) => { acum += entradas[i] - saidas[i]; return Math.round(acum * 100) / 100; });
 
@@ -183,7 +187,7 @@ function renderSaldo(anoFiltro) {
     data: { labels, datasets: [
       { label: 'Entradas', data: entradas, backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1, borderRadius: 4 },
       { label: 'Saidas',   data: saidas,   backgroundColor: '#ef444488', borderColor: '#ef4444', borderWidth: 1, borderRadius: 4 },
-      { label: 'Carteira', data: carteira, type: 'line', borderColor: '#22c55e', backgroundColor: '#22c55e18', tension: 0.4, fill: true, pointRadius: 5, pointBackgroundColor: '#22c55e', yAxisID: 'y' },
+      { label: carteiraNomes.size > 0 ? [...carteiraNomes].join(', ') : 'Carteira', data: carteira, type: 'line', borderColor: '#22c55e', backgroundColor: '#22c55e18', tension: 0.4, fill: true, pointRadius: 5, pointBackgroundColor: '#22c55e', yAxisID: 'y' },
     ]},
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e2e8f0' } }, tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + fmt(ctx.raw) } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { color: '#2d3148' } }, y: { ticks: { color: '#94a3b8', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: '#2d3148' } } } },
   });

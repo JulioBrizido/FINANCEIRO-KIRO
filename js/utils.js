@@ -116,11 +116,13 @@ function calcularTotais(lista) {
  * @param {number} anoFiltro    Ano filtrado (-1 = todos)
  * @returns {{ saldo: number, mesLimite: number }}
  */
-function calcularSaldoCarteira(transacoes, mesIdx, anoFiltro) {
+function calcularSaldoCarteira(transacoes, mesIdx, anoFiltro, carteiraNomes) {
   const ano = anoFiltro !== -1 ? anoFiltro : null;
+  const _cNomes = carteiraNomes instanceof Set ? carteiraNomes : new Set(carteiraNomes || ['Carteira']);
+  const isCarteira = function(nome) { return _cNomes.has(nome); };
 
   const lancCarteira = transacoes.filter(t =>
-    t.cartao === 'Carteira' && t.mesIdx === 0 && (ano === null || (t.ano||0) === ano)
+    isCarteira(t.cartao) && t.mesIdx === 0 && (ano === null || (t.ano||0) === ano)
   );
   const saldoInicial = lancCarteira.reduce((s,t) =>
     t.mov === 'entrada' ? s + t.valor : s - t.valor, 0);
@@ -130,7 +132,7 @@ function calcularSaldoCarteira(transacoes, mesIdx, anoFiltro) {
     mesLimite = mesIdx;
   } else {
     const transAno = transacoes.filter(t =>
-      t.cartao !== 'Carteira' && (ano === null || (t.ano||0) === ano));
+      !isCarteira(t.cartao) && (ano === null || (t.ano||0) === ano));
     const meses = [...new Set(transAno.map(t => t.mesIdx))].sort((a,b) => a - b);
     mesLimite = meses.length > 0 ? meses[meses.length - 1] : 0;
   }
@@ -138,7 +140,7 @@ function calcularSaldoCarteira(transacoes, mesIdx, anoFiltro) {
   let saldo = saldoInicial;
   for (let m = 0; m <= mesLimite; m++) {
     const trans = transacoes.filter(t =>
-      t.cartao !== 'Carteira' && t.mesIdx === m && (ano === null || (t.ano||0) === ano)
+      !isCarteira(t.cartao) && t.mesIdx === m && (ano === null || (t.ano||0) === ano)
     );
     saldo += trans.filter(t => t.mov === 'entrada').reduce((s,t) => s + t.valor, 0) -
              trans.filter(t => (t.mov||'saida') === 'saida').reduce((s,t) => s + t.valor, 0);
