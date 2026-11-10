@@ -205,7 +205,7 @@ function renderTabela(filtrado) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const vEl = document.getElementById('navVersion');
-  if (vEl) vEl.textContent = 'v' + (window.appVersion || '3.0.0');
+  if (vEl) vEl.textContent = 'v' + (window.appVersion || '3.0.1');
   updateNavUser();
   init();
 });
