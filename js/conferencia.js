@@ -347,7 +347,7 @@ async function popularAnos() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const vEl = document.getElementById('navVersion');
-  if (vEl) vEl.textContent = 'v' + (window.appVersion || '3.0.2');
+  if (vEl) vEl.textContent = 'v' + (window.appVersion || '4.0.0');
   updateNavUser();
 
   // Preenche contas e cats
