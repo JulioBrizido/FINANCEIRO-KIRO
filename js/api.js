@@ -4,8 +4,16 @@
  * Expõe as MESMAS funções globais que o db.js original, então os
  * controllers (lancamentos.js, dashboard.js, config.js) não precisam mudar.
  *
+ * No modo Electron (window.__isElectron === true) este arquivo é carregado
+ * mas NÃO sobrescreve as funções globais — o db.js (IndexedDB) já as definiu.
+ *
  * Depende de: js/auth.js (para obter o token).
  */
+
+// No Electron, db.js já definiu todas as funções globais. Não sobrescreve.
+if (typeof window !== 'undefined' && window.__isElectron) {
+  // No-op: mantém as funções do db.js intactas
+} else {
 
 // ── CLIENTE HTTP ──────────────────────────────────────────────────────────
 
@@ -158,3 +166,5 @@ async function importarJSON(arquivo) {
     reader.readAsText(arquivo);
   });
 }
+
+} // fim do bloco web-only (não Electron)

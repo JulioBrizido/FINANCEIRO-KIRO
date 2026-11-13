@@ -1,38 +1,31 @@
 /**
- * db-adapter.js — detecta o ambiente e carrega a camada de dados correta.
+ * db-adapter.js — detecta o ambiente e ativa a camada de dados correta.
  *
- *   Electron (desktop) → db.js (IndexedDB), sem autenticação
- *   Navegador (web)    → js/auth.js + js/api.js (HTTP + JWT)
+ * ESTRATÉGIA: Todos os scripts (db.js, auth.js, api.js) são carregados via
+ * <script> estático no HTML. Este arquivo apenas detecta o ambiente e:
+ *   - No Electron: define no-ops para requireAuth/updateNavUser/logout
+ *                  e expõe window.__useElectron = true
+ *   - No browser:  chama requireAuth() (redireciona para login se sem token)
  *
- * As funções globais (dbGetAll, dbAdd, contasGetAll, etc.) ficam
- * disponíveis em ambos os modos com a mesma assinatura, então os
- * controllers (lancamentos.js, dashboard.js, config.js) não mudam.
- *
- * Deve ser o PRIMEIRO script carregado em cada página, antes dos
- * controllers. Usa document.write para inserção síncrona durante
- * o parsing da página.
+ * Os controllers (lancamentos.js, dashboard.js, etc.) chamam as funções
+ * globais (dbGetAll, contasGetAll, configGet, etc.) que são definidas
+ * em db.js (IndexedDB, Electron) ou api.js (HTTP, web) — ambos carregados
+ * estaticamente. O browser só executa o bloco relevante pela detecção.
  */
 
 (function () {
-  // Detecta Electron: preload.js expõe window.appVersion;
-  // o user agent do Electron também contém a string "Electron"
-  var isElectron = !!window.appVersion ||
+  var isElectron = typeof window.appVersion !== 'undefined' ||
                    navigator.userAgent.indexOf('Electron') !== -1;
 
+  window.__isElectron = isElectron;
+
   if (isElectron) {
-    // ── MODO DESKTOP ──────────────────────────────────────────────────
-    // Sem autenticação, usa IndexedDB (db.js).
-    // Define no-ops para as funções de auth que os controllers chamam.
+    // Modo desktop: define stubs de autenticação
     window.requireAuth   = function () { return true; };
     window.updateNavUser = function () {};
     window.logout        = function () {};
-
-    document.write('<script src="db.js"><\/script>');
   } else {
-    // ── MODO WEB ─────────────────────────────────────────────────────
-    // Autenticação JWT + API HTTP.
-    document.write('<script src="js/auth.js"><\/script>');
-    document.write('<script>requireAuth();<\/script>');
-    document.write('<script src="js/api.js"><\/script>');
+    // Modo web: chama requireAuth que está em auth.js (já carregado antes deste script)
+    if (typeof requireAuth === 'function') requireAuth();
   }
 })();
