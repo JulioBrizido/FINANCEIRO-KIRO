@@ -105,6 +105,17 @@ async function restaurarPadroes() {
   return _fetch('POST', '/api/utils/restaurar-padroes');
 }
 
+// ── CONFIG (chave/valor) ──────────────────────────────────────────────────
+
+async function configGet(chave) {
+  const r = await _fetch('GET', '/api/config/' + encodeURIComponent(chave));
+  return r ? r.valor : null;
+}
+
+async function configSet(chave, valor) {
+  return _fetch('PUT', '/api/config/' + encodeURIComponent(chave), { valor: String(valor) });
+}
+
 // ── EXPORT / IMPORT JSON ────────────────────────────────────────────────────
 
 async function exportarJSON() {

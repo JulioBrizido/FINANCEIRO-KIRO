@@ -72,6 +72,13 @@ function getDB() {
     CREATE INDEX IF NOT EXISTS idx_transacoes_mesano ON transacoes(user_id, ano, mesIdx);
     CREATE INDEX IF NOT EXISTS idx_contas_user       ON contas(user_id);
     CREATE INDEX IF NOT EXISTS idx_categorias_user   ON categorias(user_id);
+
+    CREATE TABLE IF NOT EXISTS config (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      chave   TEXT    NOT NULL,
+      valor   TEXT,
+      PRIMARY KEY (user_id, chave)
+    );
   `);
 
   return _db;

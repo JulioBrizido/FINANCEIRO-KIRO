@@ -33,6 +33,7 @@ app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/transacoes', require('./routes/transacoes'));
 app.use('/api/contas',     require('./routes/contas'));
 app.use('/api/categorias', require('./routes/categorias'));
+app.use('/api/config',     require('./routes/config'));
 app.use('/api/utils',      require('./routes/utils'));
 
 // ── ARQUIVOS ESTÁTICOS ────────────────────────────────────────────────────

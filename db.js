@@ -240,6 +240,28 @@ async function catsDelete(id) {
   });
 }
 
+// ── CONFIG (chave/valor) ──────────────────────────────────────────────────
+
+async function configGet(chave) {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(STORE_CONFIG, 'readonly');
+    const req = tx.objectStore(STORE_CONFIG).get(chave);
+    req.onsuccess = e => resolve(e.target.result ? e.target.result.valor : null);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function configSet(chave, valor) {
+  const db = await abrirDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(STORE_CONFIG, 'readwrite');
+    const req = tx.objectStore(STORE_CONFIG).put({ chave, valor });
+    req.onsuccess = () => resolve();
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
 // ── EXPORT / IMPORT JSON ──────────────────────────────────────────────────
 
 async function exportarJSON() {
