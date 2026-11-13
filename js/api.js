@@ -1,170 +1,166 @@
 /**
- * api.js — camada de dados via HTTP (substitui db.js/IndexedDB).
+ * api.js — camada de dados via HTTP (substitui db.js/IndexedDB no modo web).
  *
- * Expõe as MESMAS funções globais que o db.js original, então os
- * controllers (lancamentos.js, dashboard.js, config.js) não precisam mudar.
- *
- * No modo Electron (window.__isElectron === true) este arquivo é carregado
+ * No modo Electron (window.__isElectron === true), este arquivo é carregado
  * mas NÃO sobrescreve as funções globais — o db.js (IndexedDB) já as definiu.
+ *
+ * Usa atribuição em window (não declarações function) para poder rodar dentro
+ * de um bloco condicional sem erros de sintaxe em strict mode.
  *
  * Depende de: js/auth.js (para obter o token).
  */
 
-// No Electron, db.js já definiu todas as funções globais. Não sobrescreve.
-if (typeof window !== 'undefined' && window.__isElectron) {
-  // No-op: mantém as funções do db.js intactas
-} else {
+(function () {
+  // No Electron db.js já definiu tudo — não sobrescreve
+  if (typeof window !== 'undefined' && window.__isElectron) return;
 
-// ── CLIENTE HTTP ──────────────────────────────────────────────────────────
+  // ── CLIENTE HTTP ────────────────────────────────────────────────────────
 
-async function _fetch(method, url, body) {
-  const headers = { 'Content-Type': 'application/json' };
-  const token = window._authToken || localStorage.getItem('ff_token');
-  if (token) headers['Authorization'] = 'Bearer ' + token;
+  async function _fetch(method, url, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = window._authToken || localStorage.getItem('ff_token');
+    if (token) headers['Authorization'] = 'Bearer ' + token;
 
-  const opts = { method, headers };
-  if (body !== undefined) opts.body = JSON.stringify(body);
+    const opts = { method, headers };
+    if (body !== undefined) opts.body = JSON.stringify(body);
 
-  const resp = await fetch(url, opts);
+    const resp = await fetch(url, opts);
 
-  // Se o token expirou, manda para o login
-  if (resp.status === 401 && !url.includes('/api/auth/')) {
-    localStorage.removeItem('ff_token');
-    localStorage.removeItem('ff_user');
-    window.location.href = 'login.html';
-    throw new Error('Sessão expirada');
+    if (resp.status === 401 && !url.includes('/api/auth/')) {
+      localStorage.removeItem('ff_token');
+      localStorage.removeItem('ff_user');
+      window.location.href = 'login.html';
+      throw new Error('Sessão expirada');
+    }
+
+    if (!resp.ok) {
+      let msg = 'Erro na requisição';
+      try { msg = (await resp.json()).error || msg; } catch { /* ignora */ }
+      throw new Error(msg);
+    }
+
+    const text = await resp.text();
+    return text ? JSON.parse(text) : null;
   }
 
-  if (!resp.ok) {
-    let msg = 'Erro na requisição';
-    try { msg = (await resp.json()).error || msg; } catch { /* ignora */ }
-    throw new Error(msg);
-  }
+  // ── CRUD TRANSAÇÕES ──────────────────────────────────────────────────────
 
-  // DELETE e PUT retornam { ok: true }, GET retorna array/objeto, POST retorna { id }
-  const text = await resp.text();
-  return text ? JSON.parse(text) : null;
-}
+  window.dbGetAll = async function () {
+    return _fetch('GET', '/api/transacoes');
+  };
 
-// ── CRUD TRANSAÇÕES ────────────────────────────────────────────────────────
+  window.dbAdd = async function (transacao) {
+    const r = await _fetch('POST', '/api/transacoes', transacao);
+    return r.id;
+  };
 
-async function dbGetAll() {
-  return _fetch('GET', '/api/transacoes');
-}
+  window.dbUpdate = async function (transacao) {
+    return _fetch('PUT', '/api/transacoes/' + transacao.id, transacao);
+  };
 
-async function dbAdd(transacao) {
-  const r = await _fetch('POST', '/api/transacoes', transacao);
-  return r.id;
-}
+  window.dbDelete = async function (id) {
+    return _fetch('DELETE', '/api/transacoes/' + id);
+  };
 
-async function dbUpdate(transacao) {
-  return _fetch('PUT', '/api/transacoes/' + transacao.id, transacao);
-}
+  // ── CRUD CONTAS ──────────────────────────────────────────────────────────
 
-async function dbDelete(id) {
-  return _fetch('DELETE', '/api/transacoes/' + id);
-}
+  window.contasGetAll = async function () {
+    return _fetch('GET', '/api/contas');
+  };
 
-// ── CRUD CONTAS ─────────────────────────────────────────────────────────────
+  window.contasAdd = async function (conta) {
+    const r = await _fetch('POST', '/api/contas', conta);
+    return r.id;
+  };
 
-async function contasGetAll() {
-  return _fetch('GET', '/api/contas');
-}
+  window.contasUpdate = async function (conta) {
+    return _fetch('PUT', '/api/contas/' + conta.id, conta);
+  };
 
-async function contasAdd(conta) {
-  const r = await _fetch('POST', '/api/contas', conta);
-  return r.id;
-}
+  window.contasDelete = async function (id) {
+    return _fetch('DELETE', '/api/contas/' + id);
+  };
 
-async function contasUpdate(conta) {
-  return _fetch('PUT', '/api/contas/' + conta.id, conta);
-}
+  // ── CRUD CATEGORIAS ──────────────────────────────────────────────────────
 
-async function contasDelete(id) {
-  return _fetch('DELETE', '/api/contas/' + id);
-}
+  window.catsGetAll = async function () {
+    return _fetch('GET', '/api/categorias');
+  };
 
-// ── CRUD CATEGORIAS ─────────────────────────────────────────────────────────
+  window.catsAdd = async function (cat) {
+    const r = await _fetch('POST', '/api/categorias', cat);
+    return r.id;
+  };
 
-async function catsGetAll() {
-  return _fetch('GET', '/api/categorias');
-}
+  window.catsUpdate = async function (cat) {
+    return _fetch('PUT', '/api/categorias/' + cat.id, cat);
+  };
 
-async function catsAdd(cat) {
-  const r = await _fetch('POST', '/api/categorias', cat);
-  return r.id;
-}
+  window.catsDelete = async function (id) {
+    return _fetch('DELETE', '/api/categorias/' + id);
+  };
 
-async function catsUpdate(cat) {
-  return _fetch('PUT', '/api/categorias/' + cat.id, cat);
-}
+  // ── LIMPAR / RESTAURAR ────────────────────────────────────────────────────
 
-async function catsDelete(id) {
-  return _fetch('DELETE', '/api/categorias/' + id);
-}
+  window.limparTudo = async function () {
+    return _fetch('POST', '/api/utils/limpar-tudo');
+  };
 
-// ── LIMPAR / RESTAURAR ────────────────────────────────────────────────────
+  window.restaurarPadroes = async function () {
+    return _fetch('POST', '/api/utils/restaurar-padroes');
+  };
 
-async function limparTudo() {
-  return _fetch('POST', '/api/utils/limpar-tudo');
-}
+  // ── CONFIG (chave/valor) ──────────────────────────────────────────────────
 
-async function restaurarPadroes() {
-  return _fetch('POST', '/api/utils/restaurar-padroes');
-}
+  window.configGet = async function (chave) {
+    const r = await _fetch('GET', '/api/config/' + encodeURIComponent(chave));
+    return r ? r.valor : null;
+  };
 
-// ── CONFIG (chave/valor) ──────────────────────────────────────────────────
+  window.configSet = async function (chave, valor) {
+    return _fetch('PUT', '/api/config/' + encodeURIComponent(chave), { valor: String(valor) });
+  };
 
-async function configGet(chave) {
-  const r = await _fetch('GET', '/api/config/' + encodeURIComponent(chave));
-  return r ? r.valor : null;
-}
+  // ── EXPORT / IMPORT JSON ──────────────────────────────────────────────────
 
-async function configSet(chave, valor) {
-  return _fetch('PUT', '/api/config/' + encodeURIComponent(chave), { valor: String(valor) });
-}
+  window.exportarJSON = async function () {
+    const dados  = await window.dbGetAll();
+    const contas = await window.contasGetAll();
+    const cats   = await window.catsGetAll();
+    const payload = { transacoes: dados, contas, categorias: cats };
+    const blob  = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href      = url;
+    a.download  = 'financeiro_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-// ── EXPORT / IMPORT JSON ────────────────────────────────────────────────────
+  window.importarJSON = async function (arquivo) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          const raw        = JSON.parse(e.target.result);
+          const transacoes = Array.isArray(raw) ? raw : (raw.transacoes  || []);
+          const contas     = Array.isArray(raw) ? []  : (raw.contas      || []);
+          const categorias = Array.isArray(raw) ? []  : (raw.categorias  || []);
 
-async function exportarJSON() {
-  const dados  = await dbGetAll();
-  const contas = await contasGetAll();
-  const cats   = await catsGetAll();
-  const payload = { transacoes: dados, contas, categorias: cats };
-  const blob  = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url   = URL.createObjectURL(blob);
-  const a     = document.createElement('a');
-  a.href      = url;
-  a.download  = `financeiro_backup_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+          const tItems   = transacoes.map(({ id, ...s }) => s);
+          const cItems   = contas.map(({ id, ...s }) => s);
+          const catItems = categorias.map(({ id, ...s }) => s);
 
-async function importarJSON(arquivo) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const raw        = JSON.parse(e.target.result);
-        const transacoes = Array.isArray(raw) ? raw : (raw.transacoes  || []);
-        const contas     = Array.isArray(raw) ? []  : (raw.contas      || []);
-        const categorias = Array.isArray(raw) ? []  : (raw.categorias  || []);
+          if (tItems.length)   await _fetch('POST', '/api/transacoes/bulk', tItems);
+          if (cItems.length)   await _fetch('POST', '/api/contas/bulk', cItems);
+          if (catItems.length) await _fetch('POST', '/api/categorias/bulk', catItems);
 
-        // Envia em lote (bulk) — muito mais rápido que chamadas individuais
-        const tItems   = transacoes.map(({ id, ...s }) => s);
-        const cItems   = contas.map(({ id, ...s }) => s);
-        const catItems = categorias.map(({ id, ...s }) => s);
+          resolve({ transacoes: transacoes.length, contas: contas.length, categorias: categorias.length });
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(arquivo);
+    });
+  };
 
-        if (tItems.length)   await _fetch('POST', '/api/transacoes/bulk', tItems);
-        if (cItems.length)   await _fetch('POST', '/api/contas/bulk', cItems);
-        if (catItems.length) await _fetch('POST', '/api/categorias/bulk', catItems);
-
-        resolve({ transacoes: transacoes.length, contas: contas.length, categorias: categorias.length });
-      } catch (err) { reject(err); }
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(arquivo);
-  });
-}
-
-} // fim do bloco web-only (não Electron)
+})();
